@@ -9,6 +9,10 @@ build: test
 	@echo "== Build =="
 	env GOOS=$(TARGET) GOARCH=$(ARCH) go build -ldflags="-s -w" -o out main.go
 
+test:
+	@echo "== Test =="
+	gofmt -s -l -w $(SRC)
+
 docker:
 	@echo "== Docker build =="
 	docker build -t $(DOCKER_REPO) .
