@@ -1,5 +1,7 @@
 [![Build Status](https://travis-ci.org/telia-oss/appsync-resource.svg?branch=master)](https://travis-ci.org/telia-oss/appsync-resource)
 [![Go Report Card](https://goreportcard.com/badge/github.com/telia-oss/appsync-resource)](https://goreportcard.com/report/github.com/telia-oss/appsync-resource)
+(https://img.shields.io/maintenance/yes/2018.svg)
+
 
 # AWS AppSync resource
 
