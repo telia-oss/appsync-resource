@@ -35,7 +35,7 @@ resource_types:
 - name: appsync-resource
     type: docker-image
     source:
-      repository: mhd999/resource
+      repository: teliaoss/appsync-resource
 ```
 
 ### Resource
