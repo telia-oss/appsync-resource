@@ -12,6 +12,8 @@ install:
 
 build: test install	
 	@echo "== Build =="
+	env GOOS=$(TARGET) GOARCH=$(ARCH) go build -ldflags="-s -w" -o in main.go
+	env GOOS=$(TARGET) GOARCH=$(ARCH) go build -ldflags="-s -w" -o check main.go
 	env GOOS=$(TARGET) GOARCH=$(ARCH) go build -ldflags="-s -w" -o out main.go
 
 test:
