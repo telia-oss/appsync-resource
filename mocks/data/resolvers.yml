@@ -1,0 +1,11 @@
+resolvers:
+  - dataSource: layout_datasource
+    typeName: Query
+    fieldName: layout
+    requestMapping: >
+      {
+          "version" : "2017-02-28",
+          "operation": "Invoke",
+          "payload": $util.toJson($context.args)
+      }
+    responseMapping: $util.toJson($context.result)

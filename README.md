@@ -11,20 +11,24 @@ A Concourse resource to update AppSync schema. Written in Go.
 
 | Parameter          | Required      | Example                  | Description
 | ------------------ | ------------- | -------------            | ------------------------------ |
-| api_id             | Yes           | znvjdp3n25epx            |                                |
+| api_name           | Yes           | some-api-name            |                                |
 | access_key_id      | Yes           | {YOUR_ACCESS_KEY_ID}     |                                |
-| secret_access_key  | Yes           | {YOUR_SECRET_ACCESS_KEY} |                                |
+| access_key_secret  | Yes           | {YOUR_SECRET_ACCESS_KEY} |                                |
 | session_token      | Yes           | {YOUR_SESSION_TOKEN}     |                                |
 | region_name        | No            | eu-west-1                | AWS region DEFAULT: eu-west-1  |
 
-### `out`: Update or Create schema.
+### `out`: Update or Create schema/resolvers.
 
-Given a schema specified by `schemaContent`, to update AppSync existing schema to create AppSync new schema.
+Provide a schema specified by `schema` or `schemaPath`, to update AppSync existing schema or to create new AppSync schema.
+
+Provide resolvers definition specified by `resolvers` or `resolversPath` to update or create new AppSync resolvers.
 
 #### Parameters
 
-* `schemaContent`: *Required.* .grapqh schema String provided by an output of a task.
-
+* `schema`: GraphQL schema String.
+* `schemaPath`: path to a GraphQL schema file provided by an output of a task for example.
+* `resolvers`: resolver defintions.
+* `resolversPath`: path to a yaml file provided by an output of a task for example.
 
 ## Example Configuration
 
@@ -54,8 +58,59 @@ resource:
 
 ### Plan
 
+For updating only schema
 ``` yaml
 - put: appsync-resource
   params: 
-    schemaContent: "schema {query:Query} type Query { getTodos: [Todo]} type Todo { id: ID! name: String description: Int priority: Int}"
+    schema: "schema {query:Query} type Query { getTodos: [Todo]} type Todo { id: ID! name: String description: Int priority: Int}"
+```
+
+For updating only resolvers
+``` yaml
+- put: appsync-resource
+  params: 
+    resolvers: |
+      resolvers:
+        dataSource: data_source_name
+        typeName: SomeType
+        fieldName: SomeField
+        requestMapping: >
+          \#set( $event = {
+            "stuff": $context.arguments.input.stuff
+          } )
+
+          {
+              "version" : "2017-02-28",
+              "operation": "Invoke",
+              "payload": $util.toJson($event)
+          }
+        responseMapping: $util.toJson($context.result)
+```
+
+Or both from files
+``` yaml
+- put: appsync-resource
+  params:
+      schemaPath:  output/graphql/schema.graphql
+      resolversPath: output/graphql/resolvers.yml
+```
+
+With `resolvers.yml` file looking like this:
+
+``` yaml
+resolvers:
+  dataSource: data_source_name
+  typeName: SomeType
+  fieldName: SomeField
+  requestMapping: >
+    \#set( $event = {
+      "stuff": $context.arguments.input.stuff
+    } )
+
+    {
+        "version" : "2017-02-28",
+        "operation": "Invoke",
+        "payload": $util.toJson($event)
+    }
+  responseMapping: $util.toJson($context.result)
 ```
