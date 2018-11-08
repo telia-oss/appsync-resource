@@ -1,8 +1,11 @@
 package cmd
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -18,7 +21,6 @@ type (
 	}
 	// InputJSON ...
 	InputJSON struct {
-		Schema  []byte            `json:"schema"`
 		Params  map[string]string `json:"params"`
 		Source  map[string]string `json:"source"`
 		Version version           `json:"version"`
@@ -114,13 +116,18 @@ func Out(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 	if !ok {
 		return outOutputJSON{}, errors.New("aws region_name not set")
 	}
-
 	schemaContent, ok := input.Params["schemaContent"]
 	if !ok {
-		return outOutputJSON{}, errors.New("schema schemaContent not set")
+		return outOutputJSON{}, errors.New("schemaContent not set")
+	}
+
+	resolversContent, ok := input.Params["resolversContent"]
+	if !ok {
+		return outOutputJSON{}, errors.New("resolversContent not set")
 	}
 
 	var ref = input.Version.Ref
+	var output outOutputJSON
 
 	// AWS creds
 	awsConfig := NewAwsConfig(
@@ -139,34 +146,84 @@ func Out(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 	appsyncClient := appsync.New(session)
 
 	// Create or update schema
-	schema := []byte(schemaContent)
-	var schemaCreateParams = &appsync.StartSchemaCreationInput{
-		ApiId:      aws.String(apiID),
-		Definition: schema,
+	if schemaContent != "" {
+		fmt.Println("#schema")
+		schema := []byte(schemaContent)
+		var schemaCreateParams = &appsync.StartSchemaCreationInput{
+			ApiId:      aws.String(apiID),
+			Definition: schema,
+		}
+
+		var schemaStatusParams = &appsync.GetSchemaCreationStatusInput{
+			ApiId: aws.String(apiID),
+		}
+
+		// Start create or update schema
+		error := startSchemaCreationOrUpdate(appsyncClient, schemaCreateParams)
+		if error != nil {
+			logger.Fatalf("failed to create/update the schema: %s", error)
+		}
+
+		// get schema creation status
+		creationStatus, creationDetails := getSchemaCreationStatus(appsyncClient, schemaStatusParams, logger)
+
+		// OUTPUT
+		output = outOutputJSON{
+			Version: version{Ref: ref},
+			Metadata: []metadata{
+				{Name: "creationStatus", Value: creationStatus},
+				{Name: "creationDetails", Value: creationDetails},
+			},
+		}
 	}
+	// update Resolvers
+	// TODO: refactor code
+	// TODO: map resolvers array
+	// TODO: fix when resolver already exist
+	if resolversContent != "" {
+		type RequestMappingTemplate struct {
+			Version   string
+			Operation string
+			Payload   string
+		}
+		type Resolver struct {
+			DataSourceName         string
+			FieldName              string
+			RequestMappingTemplate RequestMappingTemplate
+			ResponseMapping        string
+			TypeName               string
+		}
+		resolverJsonTpl := fmt.Sprintf("`%s`", resolversContent)
+		var resolver Resolver
+		var val []byte = []byte(resolverJsonTpl)
 
-	var schemaStatusParams = &appsync.GetSchemaCreationStatusInput{
-		ApiId: aws.String(apiID),
+		s, _ := strconv.Unquote(string(val))
+		json.Unmarshal([]byte(s), &resolver)
+
+		var params = &appsync.CreateResolverInput{
+			ApiId:                   aws.String(apiID),
+			DataSourceName:          aws.String(resolver.DataSourceName),
+			FieldName:               aws.String(resolver.FieldName),
+			RequestMappingTemplate:  aws.String(fmt.Sprintf("%s", resolver.RequestMappingTemplate)),
+			ResponseMappingTemplate: aws.String(resolver.ResponseMapping),
+			TypeName:                aws.String(resolver.TypeName),
+		}
+
+		req, resp := appsyncClient.CreateResolverRequest(params)
+
+		err := req.Send()
+		if err != nil {
+			fmt.Println("Its an error", err)
+		}
+
+		// OUTPUT
+		output = outOutputJSON{
+			Version: version{Ref: ref},
+			Metadata: []metadata{
+				{Name: "resolverArn", Value: *resp.Resolver.ResolverArn},
+			},
+		}
 	}
-
-	// Start create or update schema
-	error := startSchemaCreationOrUpdate(appsyncClient, schemaCreateParams)
-	if error != nil {
-		logger.Fatalf("failed to create/update the schema: %s", error)
-	}
-
-	// get schema creation status
-	creationStatus, creationDetails := getSchemaCreationStatus(appsyncClient, schemaStatusParams, logger)
-
-	// OUTPUT
-	output := outOutputJSON{
-		Version: version{Ref: ref},
-		Metadata: []metadata{
-			{Name: "creationStatus", Value: creationStatus},
-			{Name: "creationDetails", Value: creationDetails},
-		},
-	}
-
 	return output, nil
 
 }
