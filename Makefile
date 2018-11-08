@@ -1,4 +1,4 @@
-DOCKER_REPO  = mhd999/appsync-resource
+DOCKER_REPO  = teliaoss/appsync-resource
 TARGET      ?= linux
 ARCH        ?= amd64
 SRC          = $(shell find . -type f -name '*.go' -not -path "./vendor/*")
