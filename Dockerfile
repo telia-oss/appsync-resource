@@ -11,6 +11,8 @@ ENV ARCH amd64
 
 RUN make build
 
-COPY out /opt/resource/out
+FROM alpine/git:latest as resource
+COPY --from=builder /go/src/github.com/telia-oss/appsync-resource/out /opt/resource/out
+RUN chmod +x /opt/resource/*
 
-RUN chmod +x /opt/resource/out
+FROM resource
