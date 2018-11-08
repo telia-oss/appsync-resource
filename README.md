@@ -5,7 +5,7 @@
 
 # AWS AppSync resource
 
-A Concourse resource to update AppSync schema. Written in Go.
+A Concourse resource to update AppSync schema and Resolvers. Written in Go.
 
 ## Source Configuration
 
@@ -19,12 +19,13 @@ A Concourse resource to update AppSync schema. Written in Go.
 
 ### `out`: Update or Create schema.
 
-Given a schema specified by `schemaContent`, to update AppSync existing schema to create AppSync new schema.
+Given a schema specified by `schemaContent`, to update/create AppSync  schema Or/And Given a resolvers JSON specified by `resolversContent`, to update AppSync existing schema resolvers.
 
 #### Parameters
 
-* `schemaContent`: *Required.* .grapqh schema String provided by an output of a task.
+* `schemaContent`: *Optional.* .grapqh schema String provided by an output of a task.
 
+* `resolversContent`: *Optional.* .json resolver String provided by an output of a task.
 
 ## Example Configuration
 
@@ -58,4 +59,12 @@ resource:
 - put: appsync-resource
   params: 
     schemaContent: "schema {query:Query} type Query { getTodos: [Todo]} type Todo { id: ID! name: String description: Int priority: Int}"
+    resolversContent: "{\"dataSourceName\": \"testd\", \"fieldName\": \"getTodos\", \"requestMappingTemplate\": {\"version\": \"2017-02-28\", \"operation\": \"Invoke\", \"payload\": \"$util.toJson($context.args)\"}, \"responseMapping\": \"$util.toJson($context.result)\", \"typeName\": \"Query\"}"
 ```
+
+### Notes
+
+Before using this resource to update/create resolvers check these TODOs:
+
+[map resolvers array](https://github.com/telia-oss/appsync-resource/blob/master/cmd/cmd.go#L181)
+[Update when resolver already exist](https://github.com/telia-oss/appsync-resource/blob/master/cmd/cmd.go#L182)
