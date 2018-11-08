@@ -67,4 +67,5 @@ resource:
 Before using this resource to update/create resolvers check these TODOs:
 
 [map resolvers array](https://github.com/telia-oss/appsync-resource/blob/master/cmd/cmd.go#L181)
+
 [Update when resolver already exist](https://github.com/telia-oss/appsync-resource/blob/master/cmd/cmd.go#L182)
