@@ -35,6 +35,19 @@ type (
 		Metadata []metadata `json:"metadata"`
 	}
 	outOutputJSON inOutputJSON
+
+	RequestMappingTemplate struct {
+		Version   string
+		Operation string
+		Payload   string
+	}
+	Resolver struct {
+		DataSourceName         string
+		FieldName              string
+		RequestMappingTemplate RequestMappingTemplate
+		ResponseMapping        string
+		TypeName               string
+	}
 )
 
 func NewAwsConfig(
@@ -61,6 +74,40 @@ func NewAwsConfig(
 	}
 
 	return awsConfig
+}
+
+func getResolver(appsyncClient *appsync.AppSync, params *appsync.GetResolverInput) (*appsync.Resolver, error) {
+	req, resp := appsyncClient.GetResolverRequest(params)
+
+	err := req.Send()
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.Resolver, nil
+
+}
+
+func updateResolver(appsyncClient *appsync.AppSync, params *appsync.UpdateResolverInput) (*appsync.Resolver, error) {
+	req, resp := appsyncClient.UpdateResolverRequest(params)
+
+	err := req.Send()
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.Resolver, nil
+}
+
+func createResolver(appsyncClient *appsync.AppSync, params *appsync.CreateResolverInput) (*appsync.Resolver, error) {
+	req, resp := appsyncClient.CreateResolverRequest(params)
+
+	err := req.Send()
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.Resolver, nil
 }
 
 func startSchemaCreationOrUpdate(appsyncClient *appsync.AppSync, schemaCreateParams *appsync.StartSchemaCreationInput) error {
@@ -128,6 +175,14 @@ func Out(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 
 	var ref = input.Version.Ref
 	var output outOutputJSON
+	// number of resolvers successfully created
+	var nResolversSuccessfullyCreated = 0
+	// number of resolver successfully updated
+	var nResolversSuccessfullyUpdated = 0
+	// number of resolver fail to create
+	var nResolversfailCreated = 0
+	// number of resolver fail to update
+	var nResolversfailUpdate = 0
 
 	// AWS creds
 	awsConfig := NewAwsConfig(
@@ -138,6 +193,7 @@ func Out(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 	)
 	//update schema
 	session, err := session.NewSession(awsConfig)
+	// session, err := session.NewSession()
 	if err != nil {
 		logger.Fatalf("failed to create a new session: %s", err)
 	}
@@ -147,7 +203,6 @@ func Out(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 
 	// Create or update schema
 	if schemaContent != "" {
-		fmt.Println("#schema")
 		schema := []byte(schemaContent)
 		var schemaCreateParams = &appsync.StartSchemaCreationInput{
 			ApiId:      aws.String(apiID),
@@ -179,48 +234,65 @@ func Out(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 	// update Resolvers
 	// TODO: refactor code
 	// TODO: map resolvers array
-	// TODO: fix when resolver already exist
 	if resolversContent != "" {
-		type RequestMappingTemplate struct {
-			Version   string
-			Operation string
-			Payload   string
-		}
-		type Resolver struct {
-			DataSourceName         string
-			FieldName              string
-			RequestMappingTemplate RequestMappingTemplate
-			ResponseMapping        string
-			TypeName               string
-		}
-		resolverJsonTpl := fmt.Sprintf("`%s`", resolversContent)
+
+		resolverJSONTpl := fmt.Sprintf("`%s`", resolversContent)
 		var resolver Resolver
-		var val []byte = []byte(resolverJsonTpl)
+		val := []byte(resolverJSONTpl)
 
 		s, _ := strconv.Unquote(string(val))
 		json.Unmarshal([]byte(s), &resolver)
 
-		var params = &appsync.CreateResolverInput{
-			ApiId:                   aws.String(apiID),
-			DataSourceName:          aws.String(resolver.DataSourceName),
-			FieldName:               aws.String(resolver.FieldName),
-			RequestMappingTemplate:  aws.String(fmt.Sprintf("%s", resolver.RequestMappingTemplate)),
-			ResponseMappingTemplate: aws.String(resolver.ResponseMapping),
-			TypeName:                aws.String(resolver.TypeName),
-		}
+		resolverResp, err := getResolver(appsyncClient, &appsync.GetResolverInput{
+			ApiId:     aws.String(apiID),
+			FieldName: aws.String(resolver.FieldName),
+			TypeName:  aws.String(resolver.TypeName),
+		})
 
-		req, resp := appsyncClient.CreateResolverRequest(params)
-
-		err := req.Send()
 		if err != nil {
-			fmt.Println("Its an error", err)
+			logger.Println("failed to fetch a resolver with error", err)
+		}
+		if resolverResp != nil {
+			var params = &appsync.UpdateResolverInput{
+				ApiId:                   aws.String(apiID),
+				DataSourceName:          aws.String(resolver.DataSourceName),
+				FieldName:               aws.String(resolver.FieldName),
+				RequestMappingTemplate:  aws.String(fmt.Sprintf("%s", resolver.RequestMappingTemplate)),
+				ResponseMappingTemplate: aws.String(resolver.ResponseMapping),
+				TypeName:                aws.String(resolver.TypeName),
+			}
+			_, err := updateResolver(appsyncClient, params)
+			if err != nil {
+				nResolversfailUpdate++
+				logger.Println("failed to fetch a resolver with error", err)
+			}
+			nResolversSuccessfullyUpdated++
+		} else {
+			var params = &appsync.CreateResolverInput{
+				ApiId:                   aws.String(apiID),
+				DataSourceName:          aws.String(resolver.DataSourceName),
+				FieldName:               aws.String(resolver.FieldName),
+				RequestMappingTemplate:  aws.String(fmt.Sprintf("%s", resolver.RequestMappingTemplate)),
+				ResponseMappingTemplate: aws.String(resolver.ResponseMapping),
+				TypeName:                aws.String(resolver.TypeName),
+			}
+			_, err := createResolver(appsyncClient, params)
+			if err != nil {
+				nResolversfailCreated++
+				logger.Println("failed to fetch a resolver with error", err)
+			}
+
+			nResolversSuccessfullyCreated++
 		}
 
 		// OUTPUT
 		output = outOutputJSON{
 			Version: version{Ref: ref},
 			Metadata: []metadata{
-				{Name: "resolverArn", Value: *resp.Resolver.ResolverArn},
+				{Name: "number of resolvers successfully created", Value: strconv.Itoa(nResolversSuccessfullyCreated)},
+				{Name: "number of resolver successfully updated", Value: strconv.Itoa(nResolversSuccessfullyUpdated)},
+				{Name: "number of resolver fail to create", Value: strconv.Itoa(nResolversfailCreated)},
+				{Name: "number of resolver fail to update", Value: strconv.Itoa(nResolversfailUpdate)},
 			},
 		}
 	}

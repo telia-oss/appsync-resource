@@ -5,7 +5,7 @@
 
 # AWS AppSync resource
 
-A Concourse resource to update AppSync schema and Resolvers. Written in Go.
+A Concourse resource to update AppSync schema. Written in Go.
 
 ## Source Configuration
 
@@ -23,9 +23,10 @@ Given a schema specified by `schemaContent`, to update/create AppSync  schema Or
 
 #### Parameters
 
-* `schemaContent`: *Optional.* .grapqh schema String provided by an output of a task.
+* `schemaContent`: *Optional.* .grapqh schema String provided by an output of a task, if you didn't specify `resolversContent` this field is *Required.*.
 
-* `resolversContent`: *Optional.* .json resolver String provided by an output of a task.
+* `resolversContent`: *Optional.* .json resolver String provided by an output of a task, if you didn't specify `schemaContent` this field is *Required.*.
+.
 
 ## Example Configuration
 
