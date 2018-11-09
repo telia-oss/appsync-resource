@@ -62,10 +62,4 @@ resource:
     resolversContent: "{\"dataSourceName\": \"testd\", \"fieldName\": \"getTodos\", \"requestMappingTemplate\": {\"version\": \"2017-02-28\", \"operation\": \"Invoke\", \"payload\": \"$util.toJson($context.args)\"}, \"responseMapping\": \"$util.toJson($context.result)\", \"typeName\": \"Query\"}"
 ```
 
-### Notes
 
-Before using this resource to update/create resolvers check these TODOs:
-
-[map resolvers array](https://github.com/telia-oss/appsync-resource/blob/master/cmd/cmd.go#L181)
-
-[Update when resolver already exist](https://github.com/telia-oss/appsync-resource/blob/master/cmd/cmd.go#L182)
