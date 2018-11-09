@@ -75,7 +75,61 @@ func NewAwsConfig(
 
 	return awsConfig
 }
+func createOrUpdateResolvers(appsyncClient *appsync.AppSync, resolvers []Resolver, apiID string, logger *log.Logger) (string, string, string, string) {
+	// number of resolvers successfully created
+	var nResolversSuccessfullyCreated = 0
+	// number of resolver successfully updated
+	var nResolversSuccessfullyUpdated = 0
+	// number of resolver fail to create
+	var nResolversfailCreated = 0
+	// number of resolver fail to update
+	var nResolversfailUpdate = 0
 
+	for _, resolver := range resolvers {
+		resolverResp, err := getResolver(appsyncClient, &appsync.GetResolverInput{
+			ApiId:     aws.String(apiID),
+			FieldName: aws.String(resolver.FieldName),
+			TypeName:  aws.String(resolver.TypeName),
+		})
+
+		if err != nil {
+			logger.Println("failed to fetch a resolver with error", err)
+		}
+		if resolverResp != nil {
+			var params = &appsync.UpdateResolverInput{
+				ApiId:                   aws.String(apiID),
+				DataSourceName:          aws.String(resolver.DataSourceName),
+				FieldName:               aws.String(resolver.FieldName),
+				RequestMappingTemplate:  aws.String(fmt.Sprintf("%s", resolver.RequestMappingTemplate)),
+				ResponseMappingTemplate: aws.String(resolver.ResponseMapping),
+				TypeName:                aws.String(resolver.TypeName),
+			}
+			_, err := updateResolver(appsyncClient, params)
+			if err != nil {
+				nResolversfailUpdate++
+				logger.Println("failed to fetch a resolver with error", err)
+			}
+			nResolversSuccessfullyUpdated++
+		} else {
+			var params = &appsync.CreateResolverInput{
+				ApiId:                   aws.String(apiID),
+				DataSourceName:          aws.String(resolver.DataSourceName),
+				FieldName:               aws.String(resolver.FieldName),
+				RequestMappingTemplate:  aws.String(fmt.Sprintf("%s", resolver.RequestMappingTemplate)),
+				ResponseMappingTemplate: aws.String(resolver.ResponseMapping),
+				TypeName:                aws.String(resolver.TypeName),
+			}
+			_, err := createResolver(appsyncClient, params)
+			if err != nil {
+				nResolversfailCreated++
+				logger.Println("failed to fetch a resolver with error", err)
+			}
+
+			nResolversSuccessfullyCreated++
+		}
+	}
+	return strconv.Itoa(nResolversSuccessfullyCreated), strconv.Itoa(nResolversfailCreated), strconv.Itoa(nResolversSuccessfullyUpdated), strconv.Itoa(nResolversfailUpdate)
+}
 func getResolver(appsyncClient *appsync.AppSync, params *appsync.GetResolverInput) (*appsync.Resolver, error) {
 	req, resp := appsyncClient.GetResolverRequest(params)
 
@@ -163,6 +217,7 @@ func Out(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 	if !ok {
 		return outOutputJSON{}, errors.New("aws region_name not set")
 	}
+
 	schemaContent, ok := input.Params["schemaContent"]
 	if !ok {
 		return outOutputJSON{}, errors.New("schemaContent not set")
@@ -175,14 +230,6 @@ func Out(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 
 	var ref = input.Version.Ref
 	var output outOutputJSON
-	// number of resolvers successfully created
-	var nResolversSuccessfullyCreated = 0
-	// number of resolver successfully updated
-	var nResolversSuccessfullyUpdated = 0
-	// number of resolver fail to create
-	var nResolversfailCreated = 0
-	// number of resolver fail to update
-	var nResolversfailUpdate = 0
 
 	// AWS creds
 	awsConfig := NewAwsConfig(
@@ -193,7 +240,6 @@ func Out(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 	)
 	//update schema
 	session, err := session.NewSession(awsConfig)
-	// session, err := session.NewSession()
 	if err != nil {
 		logger.Fatalf("failed to create a new session: %s", err)
 	}
@@ -202,6 +248,7 @@ func Out(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 	appsyncClient := appsync.New(session)
 
 	// Create or update schema
+	// TODO refactor code
 	if schemaContent != "" {
 		schema := []byte(schemaContent)
 		var schemaCreateParams = &appsync.StartSchemaCreationInput{
@@ -232,67 +279,23 @@ func Out(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 		}
 	}
 	// update Resolvers
-	// TODO: refactor code
-	// TODO: map resolvers array
 	if resolversContent != "" {
 
 		resolverJSONTpl := fmt.Sprintf("`%s`", resolversContent)
-		var resolver Resolver
+		var resolvers []Resolver
 		val := []byte(resolverJSONTpl)
-
 		s, _ := strconv.Unquote(string(val))
-		json.Unmarshal([]byte(s), &resolver)
+		json.Unmarshal([]byte(s), &resolvers)
 
-		resolverResp, err := getResolver(appsyncClient, &appsync.GetResolverInput{
-			ApiId:     aws.String(apiID),
-			FieldName: aws.String(resolver.FieldName),
-			TypeName:  aws.String(resolver.TypeName),
-		})
-
-		if err != nil {
-			logger.Println("failed to fetch a resolver with error", err)
-		}
-		if resolverResp != nil {
-			var params = &appsync.UpdateResolverInput{
-				ApiId:                   aws.String(apiID),
-				DataSourceName:          aws.String(resolver.DataSourceName),
-				FieldName:               aws.String(resolver.FieldName),
-				RequestMappingTemplate:  aws.String(fmt.Sprintf("%s", resolver.RequestMappingTemplate)),
-				ResponseMappingTemplate: aws.String(resolver.ResponseMapping),
-				TypeName:                aws.String(resolver.TypeName),
-			}
-			_, err := updateResolver(appsyncClient, params)
-			if err != nil {
-				nResolversfailUpdate++
-				logger.Println("failed to fetch a resolver with error", err)
-			}
-			nResolversSuccessfullyUpdated++
-		} else {
-			var params = &appsync.CreateResolverInput{
-				ApiId:                   aws.String(apiID),
-				DataSourceName:          aws.String(resolver.DataSourceName),
-				FieldName:               aws.String(resolver.FieldName),
-				RequestMappingTemplate:  aws.String(fmt.Sprintf("%s", resolver.RequestMappingTemplate)),
-				ResponseMappingTemplate: aws.String(resolver.ResponseMapping),
-				TypeName:                aws.String(resolver.TypeName),
-			}
-			_, err := createResolver(appsyncClient, params)
-			if err != nil {
-				nResolversfailCreated++
-				logger.Println("failed to fetch a resolver with error", err)
-			}
-
-			nResolversSuccessfullyCreated++
-		}
-
+		nResolversSuccessfullyCreated, nResolversfailCreated, nResolversSuccessfullyUpdated, nResolversfailUpdate := createOrUpdateResolvers(appsyncClient, resolvers, apiID, logger)
 		// OUTPUT
 		output = outOutputJSON{
 			Version: version{Ref: ref},
 			Metadata: []metadata{
-				{Name: "number of resolvers successfully created", Value: strconv.Itoa(nResolversSuccessfullyCreated)},
-				{Name: "number of resolver successfully updated", Value: strconv.Itoa(nResolversSuccessfullyUpdated)},
-				{Name: "number of resolver fail to create", Value: strconv.Itoa(nResolversfailCreated)},
-				{Name: "number of resolver fail to update", Value: strconv.Itoa(nResolversfailUpdate)},
+				{Name: "number of resolvers successfully created", Value: nResolversSuccessfullyCreated},
+				{Name: "number of resolver successfully updated", Value: nResolversSuccessfullyUpdated},
+				{Name: "number of resolver fail to create", Value: nResolversfailCreated},
+				{Name: "number of resolver fail to update", Value: nResolversfailUpdate},
 			},
 		}
 	}

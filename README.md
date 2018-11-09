@@ -60,7 +60,7 @@ resource:
 - put: appsync-resource
   params: 
     schemaContent: "schema {query:Query} type Query { getTodos: [Todo]} type Todo { id: ID! name: String description: Int priority: Int}"
-    resolversContent: "{\"dataSourceName\": \"testd\", \"fieldName\": \"getTodos\", \"requestMappingTemplate\": {\"version\": \"2017-02-28\", \"operation\": \"Invoke\", \"payload\": \"$util.toJson($context.args)\"}, \"responseMapping\": \"$util.toJson($context.result)\", \"typeName\": \"Query\"}"
+    resolversContent: "[{\"dataSourceName\": \"test\", \"fieldName\": \"getTodos\", \"requestMappingTemplate\": {\"version\": \"2017-02-28\", \"operation\": \"Invoke\", \"payload\": \"$util.toJson($context.args)\"}, \"responseMapping\": \"$util.toJson($context.result)\", \"typeName\": \"Query\"}, {\"dataSourceName\": \"test\", \"fieldName\": \"name\", \"requestMappingTemplate\": {\"version\": \"2017-02-28\", \"operation\": \"Invoke\", \"payload\": \"$util.toJson($context.args)\"}, \"responseMapping\": \"$util.toJson($context.result)\", \"typeName\": \"Todo\"}]"
 ```
 
 
