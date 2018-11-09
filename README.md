@@ -51,7 +51,7 @@ resource:
       secret_access_key: ((secret-key))
       session_token: ((session-token))
       region_name: "eu-west-1"
-      api_id: "znvjdp3n25epx"
+      api_id: ((api-id))
 ```
 
 ### Plan
