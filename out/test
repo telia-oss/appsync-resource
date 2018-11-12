@@ -1,0 +1,4 @@
+cat input.json | go run main.go
+
+
+cat input.json | docker run -i mhd999/appsync-resource cat
