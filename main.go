@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/telia-oss/appsync-resource/cmd"
+	"github.com/telia-oss/appsync-resource/out"
 )
 
 // createOutput ...
@@ -24,7 +24,7 @@ func createOutput(output interface{}, encoder *json.Encoder, logger *log.Logger)
 func main() {
 
 	var (
-		input   cmd.InputJSON
+		input   out.InputJSON
 		decoder = json.NewDecoder(os.Stdin)
 		encoder = json.NewEncoder(os.Stdout)
 		logger  = log.New(os.Stderr, "resource:", log.Lshortfile)
@@ -34,7 +34,7 @@ func main() {
 		logger.Fatalf("Failed to decode to stdin: %s", err)
 	}
 
-	output, err := cmd.Out(input, logger)
+	output, err := out.Out(input, logger)
 	if err != nil {
 		logger.Fatalf("Input missing a field: %s", err)
 	}

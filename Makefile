@@ -3,6 +3,7 @@ TARGET      ?= linux
 ARCH        ?= amd64
 SRC          = $(shell find . -type f -name '*.go' -not -path "./vendor/*")
 
+
 default: test
 
 install: 
@@ -12,9 +13,9 @@ install:
 
 build: test install	
 	@echo "== Build =="
-	env GOOS=$(TARGET) GOARCH=$(ARCH) go build -ldflags="-s -w" -o in main.go
-	env GOOS=$(TARGET) GOARCH=$(ARCH) go build -ldflags="-s -w" -o check main.go
-	env GOOS=$(TARGET) GOARCH=$(ARCH) go build -ldflags="-s -w" -o out main.go
+	env GOOS=$(TARGET) GOARCH=$(ARCH) go build -ldflags="-s -w" -o bin/in in/in.go
+	env GOOS=$(TARGET) GOARCH=$(ARCH) go build -ldflags="-s -w" -o bin/check check/check.go
+	env GOOS=$(TARGET) GOARCH=$(ARCH) go build -ldflags="-s -w" -o bin/out main.go
 
 test:
 	@echo "== Test =="
