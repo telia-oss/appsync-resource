@@ -218,15 +218,9 @@ func Out(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 		return outOutputJSON{}, errors.New("aws region_name not set")
 	}
 
-	schemaContent, ok := input.Params["schemaContent"]
-	if !ok {
-		return outOutputJSON{}, errors.New("schemaContent not set")
-	}
+	schemaContent, _ := input.Params["schemaContent"]
 
-	resolversContent, ok := input.Params["resolversContent"]
-	if !ok {
-		return outOutputJSON{}, errors.New("resolversContent not set")
-	}
+	resolversContent, _ := input.Params["resolversContent"]
 
 	var ref = input.Version.Ref
 	var output outOutputJSON
@@ -238,7 +232,11 @@ func Out(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 		sessionToken,
 		regionName,
 	)
-	//update schema
+
+	if schemaContent == "" && resolversContent == "" {
+		return outOutputJSON{}, errors.New("resolversContent and schemaContent both are not set")
+	}
+
 	session, err := session.NewSession(awsConfig)
 	if err != nil {
 		logger.Fatalf("failed to create a new session: %s", err)
