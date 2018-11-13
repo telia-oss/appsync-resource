@@ -12,10 +12,9 @@ ENV ARCH amd64
 RUN make build
 
 FROM alpine:3.8 as resource
-COPY --from=builder /go/src/github.com/telia-oss/appsync-resource/check /opt/resource/check
-COPY --from=builder /go/src/github.com/telia-oss/appsync-resource/in /opt/resource/in
-COPY --from=builder /go/src/github.com/telia-oss/appsync-resource/out /opt/resource/out
+COPY --from=builder /go/src/github.com/telia-oss/appsync-resource/bin/check /opt/resource/check
+COPY --from=builder /go/src/github.com/telia-oss/appsync-resource/bin/in /opt/resource/in
+COPY --from=builder /go/src/github.com/telia-oss/appsync-resource/bin/out /opt/resource/out
 RUN chmod +x /opt/resource/*
 
 FROM resource
-
