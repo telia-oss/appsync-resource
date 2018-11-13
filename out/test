@@ -1,4 +1,4 @@
 cat input.json | go run main.go
-
-
-cat input.json | docker run -i mhd999/appsync-resource cat
+cat input.json | docker run -i --rm --entrypoint /opt/resource/out teliaoss/appsync-resource:dev
+cat input.json | docker run -i --rm --entrypoint /opt/resource/in teliaoss/appsync-resource:dev
+cat input.json | docker run -i --rm --entrypoint /opt/resource/check teliaoss/appsync-resource:dev
