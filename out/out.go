@@ -226,6 +226,8 @@ func Out(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 
 	var ref = input.Version.Ref
 	var output outOutputJSON
+	var resolverOutput []metadata
+	var schemaOutput []metadata
 
 	// AWS creds
 	awsConfig := NewAwsConfig(
@@ -272,17 +274,13 @@ func Out(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 		creationStatus, creationDetails := getSchemaCreationStatus(appsyncClient, schemaStatusParams, logger)
 
 		// OUTPUT
-		output = outOutputJSON{
-			Version: version{Ref: ref},
-			Metadata: []metadata{
-				{Name: "creationStatus", Value: creationStatus},
-				{Name: "creationDetails", Value: creationDetails},
-			},
+		schemaOutput = []metadata{
+			{Name: "creationStatus", Value: creationStatus},
+			{Name: "creationDetails", Value: creationDetails},
 		}
 	}
 	// update Resolvers
 	if resolversContent != "" {
-
 		resolverJSONTpl := fmt.Sprintf("`%s`", resolversContent)
 		var resolvers []Resolver
 		val := []byte(resolverJSONTpl)
@@ -291,15 +289,16 @@ func Out(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 
 		nResolversSuccessfullyCreated, nResolversfailCreated, nResolversSuccessfullyUpdated, nResolversfailUpdate := createOrUpdateResolvers(appsyncClient, resolvers, apiID, logger)
 		// OUTPUT
-		output = outOutputJSON{
-			Version: version{Ref: ref},
-			Metadata: []metadata{
-				{Name: "number of resolvers successfully created", Value: nResolversSuccessfullyCreated},
-				{Name: "number of resolver successfully updated", Value: nResolversSuccessfullyUpdated},
-				{Name: "number of resolver fail to create", Value: nResolversfailCreated},
-				{Name: "number of resolver fail to update", Value: nResolversfailUpdate},
-			},
+		resolverOutput = []metadata{
+			{Name: "number of resolvers successfully created", Value: nResolversSuccessfullyCreated},
+			{Name: "number of resolver successfully updated", Value: nResolversSuccessfullyUpdated},
+			{Name: "number of resolver fail to create", Value: nResolversfailCreated},
+			{Name: "number of resolver fail to update", Value: nResolversfailUpdate},
 		}
+	}
+	output = outOutputJSON{
+		Version:  version{Ref: ref},
+		Metadata: append(schemaOutput, resolverOutput...),
 	}
 	return output, nil
 

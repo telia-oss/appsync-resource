@@ -10,12 +10,10 @@ import (
 
 // createOutput ...
 func createOutput(output interface{}, encoder *json.Encoder, logger *log.Logger) error {
-	b, err := json.MarshalIndent(output, "", "  ")
+	_, err := json.MarshalIndent(output, "", "  ")
 	if err != nil {
 		return err
 	}
-	logger.Print(string(b))
-
 	// encode output to stdout
 	return encoder.Encode(output)
 
