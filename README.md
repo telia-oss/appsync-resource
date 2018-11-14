@@ -19,13 +19,13 @@ A Concourse resource to update AppSync schema. Written in Go.
 
 ### `out`: Update or Create schema.
 
-Given a schema specified by `schemaContent`, to update/create AppSync  schema Or/And Given a resolvers JSON specified by `resolversContent`, to update AppSync existing schema resolvers.
+Given a schema specified by `schemaFile`, to update/create AppSync  schema Or/And Given a resolvers JSON specified by `resolversContent`, to update AppSync existing schema resolvers.
 
 #### Parameters
 
-* `schemaContent`: *Optional.* .grapqh schema String provided by an output of a task, if you didn't specify `resolversContent` this field is *Required.*.
+* `schemaFile`: *Optional.* .grapqh schema File provided by an output of a task, if you didn't specify `resolversContent` this field is *Required.*.
 
-* `resolversContent`: *Optional.* .json resolver String provided by an output of a task, if you didn't specify `schemaContent` this field is *Required.*.
+* `resolversContent`: *Optional.* .json resolver String provided by an output of a task, if you didn't specify `schemaFile` this field is *Required.*.
 .
 
 ## Example Configuration
@@ -59,7 +59,7 @@ resource:
 ``` yaml
 - put: appsync-resource
   params: 
-    schemaContent: "schema {query:Query} type Query { getTodos: [Todo]} type Todo { id: ID! name: String description: Int priority: Int}"
+    schemaFile: "schema.graphql"
     resolversContent: "[{\"dataSourceName\": \"test\", \"fieldName\": \"getTodos\", \"requestMappingTemplate\": {\"version\": \"2017-02-28\", \"operation\": \"Invoke\", \"payload\": \"$util.toJson($context.args)\"}, \"responseMapping\": \"$util.toJson($context.result)\", \"typeName\": \"Query\"}, {\"dataSourceName\": \"test\", \"fieldName\": \"name\", \"requestMappingTemplate\": {\"version\": \"2017-02-28\", \"operation\": \"Invoke\", \"payload\": \"$util.toJson($context.args)\"}, \"responseMapping\": \"$util.toJson($context.result)\", \"typeName\": \"Todo\"}]"
 ```
 

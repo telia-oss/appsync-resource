@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"os"
 	"strconv"
 	"time"
 
@@ -218,7 +220,7 @@ func Out(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 		return outOutputJSON{}, errors.New("aws region_name not set")
 	}
 
-	schemaContent, _ := input.Params["schemaContent"]
+	schemaFile, _ := input.Params["schemaFile"]
 
 	resolversContent, _ := input.Params["resolversContent"]
 
@@ -233,8 +235,8 @@ func Out(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 		regionName,
 	)
 
-	if schemaContent == "" && resolversContent == "" {
-		return outOutputJSON{}, errors.New("resolversContent and schemaContent both are not set")
+	if schemaFile == "" && resolversContent == "" {
+		return outOutputJSON{}, errors.New("resolversContent and schemaFile both are not set")
 	}
 
 	session, err := session.NewSession(awsConfig)
@@ -247,8 +249,10 @@ func Out(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 
 	// Create or update schema
 	// TODO refactor code
-	if schemaContent != "" {
-		schema := []byte(schemaContent)
+	if schemaFile != "" {
+		schemaFilePath := fmt.Sprintf("%s/%s", os.Args[1], schemaFile)
+		schema, _ := ioutil.ReadFile(schemaFilePath)
+
 		var schemaCreateParams = &appsync.StartSchemaCreationInput{
 			ApiId:      aws.String(apiID),
 			Definition: schema,
