@@ -1,7 +1,6 @@
 package out
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -9,6 +8,8 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	yaml "gopkg.in/yaml.v2"
 
 	"github.com/aws/aws-sdk-go/aws"
 
@@ -38,17 +39,16 @@ type (
 	}
 	outOutputJSON inOutputJSON
 
-	RequestMappingTemplate struct {
-		Version   string
-		Operation string
-		Payload   string
+	Resolvers struct {
+		Resolvers []Resolver `yaml:"resolvers"`
 	}
+
 	Resolver struct {
-		DataSourceName         string
-		FieldName              string
-		RequestMappingTemplate RequestMappingTemplate
-		ResponseMapping        string
-		TypeName               string
+		DataSourceName          string `yaml:"dataSource"`
+		FieldName               string `yaml:"fieldName"`
+		RequestMappingTemplate  string `yaml:"requestMappingTemplate"`
+		ResponseMappingTemplate string `yaml:"responseMappingTemplate"`
+		TypeName                string `yaml:"typeName"`
 	}
 )
 
@@ -77,7 +77,10 @@ func NewAwsConfig(
 
 	return awsConfig
 }
-func createOrUpdateResolvers(appsyncClient *appsync.AppSync, resolvers []Resolver, apiID string, logger *log.Logger) (string, string, string, string) {
+
+// TODO refactor functions into service
+
+func createOrUpdateResolvers(appsyncClient *appsync.AppSync, resolvers Resolvers, apiID string, logger *log.Logger) (string, string, string, string) {
 	// number of resolvers successfully created
 	var nResolversSuccessfullyCreated = 0
 	// number of resolver successfully updated
@@ -87,7 +90,7 @@ func createOrUpdateResolvers(appsyncClient *appsync.AppSync, resolvers []Resolve
 	// number of resolver fail to update
 	var nResolversfailUpdate = 0
 
-	for _, resolver := range resolvers {
+	for _, resolver := range resolvers.Resolvers {
 		resolverResp, err := getResolver(appsyncClient, &appsync.GetResolverInput{
 			ApiId:     aws.String(apiID),
 			FieldName: aws.String(resolver.FieldName),
@@ -103,7 +106,7 @@ func createOrUpdateResolvers(appsyncClient *appsync.AppSync, resolvers []Resolve
 				DataSourceName:          aws.String(resolver.DataSourceName),
 				FieldName:               aws.String(resolver.FieldName),
 				RequestMappingTemplate:  aws.String(fmt.Sprintf("%s", resolver.RequestMappingTemplate)),
-				ResponseMappingTemplate: aws.String(resolver.ResponseMapping),
+				ResponseMappingTemplate: aws.String(resolver.ResponseMappingTemplate),
 				TypeName:                aws.String(resolver.TypeName),
 			}
 			_, err := updateResolver(appsyncClient, params)
@@ -118,7 +121,7 @@ func createOrUpdateResolvers(appsyncClient *appsync.AppSync, resolvers []Resolve
 				DataSourceName:          aws.String(resolver.DataSourceName),
 				FieldName:               aws.String(resolver.FieldName),
 				RequestMappingTemplate:  aws.String(fmt.Sprintf("%s", resolver.RequestMappingTemplate)),
-				ResponseMappingTemplate: aws.String(resolver.ResponseMapping),
+				ResponseMappingTemplate: aws.String(resolver.ResponseMappingTemplate),
 				TypeName:                aws.String(resolver.TypeName),
 			}
 			_, err := createResolver(appsyncClient, params)
@@ -222,7 +225,7 @@ func Out(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 
 	schemaFile, _ := input.Params["schema_file"]
 
-	resolvers, _ := input.Params["resolvers"]
+	resolversFile, _ := input.Params["resolvers_file"]
 
 	var ref = input.Version.Ref
 	var output outOutputJSON
@@ -237,8 +240,8 @@ func Out(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 		regionName,
 	)
 
-	if schemaFile == "" && resolvers == "" {
-		return outOutputJSON{}, errors.New("resolvers and schemaFile both are not set")
+	if schemaFile == "" && resolversFile == "" {
+		return outOutputJSON{}, errors.New("resolversFile and schemaFile both are not set")
 	}
 
 	session, err := session.NewSession(awsConfig)
@@ -280,14 +283,16 @@ func Out(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 		}
 	}
 	// update Resolvers
-	if resolvers != "" {
-		resolverJSONTpl := fmt.Sprintf("`%s`", resolvers)
-		var resolversArr []Resolver
-		val := []byte(resolverJSONTpl)
-		s, _ := strconv.Unquote(string(val))
-		json.Unmarshal([]byte(s), &resolversArr)
+	if resolversFile != "" {
+		resolversFilePath := fmt.Sprintf("%s/%s", os.Args[1], resolversFile)
+		resolversFile, _ := ioutil.ReadFile(resolversFilePath)
+		var resolvers Resolvers
+		err = yaml.Unmarshal(resolversFile, &resolvers)
+		if err != nil {
+			panic(err)
+		}
 
-		nResolversSuccessfullyCreated, nResolversfailCreated, nResolversSuccessfullyUpdated, nResolversfailUpdate := createOrUpdateResolvers(appsyncClient, resolversArr, apiID, logger)
+		nResolversSuccessfullyCreated, nResolversfailCreated, nResolversSuccessfullyUpdated, nResolversfailUpdate := createOrUpdateResolvers(appsyncClient, resolvers, apiID, logger)
 		// OUTPUT
 		resolverOutput = []metadata{
 			{Name: "number of resolvers successfully created", Value: nResolversSuccessfullyCreated},

@@ -1,0 +1,14 @@
+type Query {
+	getTodos: [Todo]
+}
+
+type Todo {
+	id: ID!
+	name: String
+	description: Int
+	priority: Int
+}
+
+schema {
+	query: Query
+}

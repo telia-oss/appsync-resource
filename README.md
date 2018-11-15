@@ -19,13 +19,13 @@ A Concourse resource to update AppSync schema. Written in Go.
 
 ### `out`: Update or Create schema.
 
-Given a schema specified by `schemaFile`, to update/create AppSync  schema Or/And Given a resolvers JSON specified by `resolversContent`, to update AppSync existing schema resolvers.
+Given a schema specified by `schema_file`, to update/create AppSync  schema Or/And Given a resolvers JSON specified by `resolvers_file`, to update AppSync existing schema resolvers.
 
 #### Parameters
 
-* `schemaFile`: *Optional.* .grapqh schema File provided by an output of a task, if you didn't specify `resolversContent` this field is *Required.*.
+* `schema_file`: *Optional.* .grapqh schema File provided by an output of a task, if you didn't specify `resolvers_file` this field is *Required.*.
 
-* `resolversContent`: *Optional.* .json resolver String provided by an output of a task, if you didn't specify `schemaFile` this field is *Required.*.
+* `resolvers_file`: *Optional.* .yml resolver String provided by an output of a task, if you didn't specify `schema_file` this field is *Required.*.
 .
 
 ## Example Configuration
@@ -60,7 +60,12 @@ resource:
 - put: appsync-resource
   params: 
     schema_file: "path/to/schema.graphql"
-    resolvers: "[{\"dataSourceName\": \"test\", \"fieldName\": \"getTodos\", \"requestMappingTemplate\": {\"version\": \"2017-02-28\", \"operation\": \"Invoke\", \"payload\": \"$util.toJson($context.args)\"}, \"responseMapping\": \"$util.toJson($context.result)\", \"typeName\": \"Query\"}, {\"dataSourceName\": \"test\", \"fieldName\": \"name\", \"requestMappingTemplate\": {\"version\": \"2017-02-28\", \"operation\": \"Invoke\", \"payload\": \"$util.toJson($context.args)\"}, \"responseMapping\": \"$util.toJson($context.result)\", \"typeName\": \"Todo\"}]"
+    resolvers_file: "path/to/resolvers.yml"
 ```
 
+### Params file example
+
+[schema.graphql] (https://github.com/telia-oss/appsync-resource/blob/master/schema.graphql)
+
+[resolvers.yml] (https://github.com/telia-oss/appsync-resource/blob/master/resolvers.yml)
 
