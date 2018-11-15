@@ -65,7 +65,7 @@ resource:
 
 ### Params file example
 
-[schema.graphql] (https://github.com/telia-oss/appsync-resource/blob/master/schema.graphql)
+[schema.graphql](https://github.com/telia-oss/appsync-resource/blob/master/schema.graphql)
 
-[resolvers.yml] (https://github.com/telia-oss/appsync-resource/blob/master/resolvers.yml)
+[resolvers.yml](https://github.com/telia-oss/appsync-resource/blob/master/resolvers.yml)
 
