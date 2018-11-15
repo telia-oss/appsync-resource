@@ -220,9 +220,9 @@ func Out(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 		return outOutputJSON{}, errors.New("aws region_name not set")
 	}
 
-	schemaFile, _ := input.Params["schemaFile"]
+	schemaFile, _ := input.Params["schema_file"]
 
-	resolversContent, _ := input.Params["resolversContent"]
+	resolvers, _ := input.Params["resolvers"]
 
 	var ref = input.Version.Ref
 	var output outOutputJSON
@@ -237,8 +237,8 @@ func Out(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 		regionName,
 	)
 
-	if schemaFile == "" && resolversContent == "" {
-		return outOutputJSON{}, errors.New("resolversContent and schemaFile both are not set")
+	if schemaFile == "" && resolvers == "" {
+		return outOutputJSON{}, errors.New("resolvers and schemaFile both are not set")
 	}
 
 	session, err := session.NewSession(awsConfig)
@@ -280,14 +280,14 @@ func Out(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 		}
 	}
 	// update Resolvers
-	if resolversContent != "" {
-		resolverJSONTpl := fmt.Sprintf("`%s`", resolversContent)
-		var resolvers []Resolver
+	if resolvers != "" {
+		resolverJSONTpl := fmt.Sprintf("`%s`", resolvers)
+		var resolversArr []Resolver
 		val := []byte(resolverJSONTpl)
 		s, _ := strconv.Unquote(string(val))
-		json.Unmarshal([]byte(s), &resolvers)
+		json.Unmarshal([]byte(s), &resolversArr)
 
-		nResolversSuccessfullyCreated, nResolversfailCreated, nResolversSuccessfullyUpdated, nResolversfailUpdate := createOrUpdateResolvers(appsyncClient, resolvers, apiID, logger)
+		nResolversSuccessfullyCreated, nResolversfailCreated, nResolversSuccessfullyUpdated, nResolversfailUpdate := createOrUpdateResolvers(appsyncClient, resolversArr, apiID, logger)
 		// OUTPUT
 		resolverOutput = []metadata{
 			{Name: "number of resolvers successfully created", Value: nResolversSuccessfullyCreated},

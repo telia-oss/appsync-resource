@@ -59,8 +59,8 @@ resource:
 ``` yaml
 - put: appsync-resource
   params: 
-    schemaFile: "path/to/schema.graphql"
-    resolversContent: "[{\"dataSourceName\": \"test\", \"fieldName\": \"getTodos\", \"requestMappingTemplate\": {\"version\": \"2017-02-28\", \"operation\": \"Invoke\", \"payload\": \"$util.toJson($context.args)\"}, \"responseMapping\": \"$util.toJson($context.result)\", \"typeName\": \"Query\"}, {\"dataSourceName\": \"test\", \"fieldName\": \"name\", \"requestMappingTemplate\": {\"version\": \"2017-02-28\", \"operation\": \"Invoke\", \"payload\": \"$util.toJson($context.args)\"}, \"responseMapping\": \"$util.toJson($context.result)\", \"typeName\": \"Todo\"}]"
+    schema_file: "path/to/schema.graphql"
+    resolvers: "[{\"dataSourceName\": \"test\", \"fieldName\": \"getTodos\", \"requestMappingTemplate\": {\"version\": \"2017-02-28\", \"operation\": \"Invoke\", \"payload\": \"$util.toJson($context.args)\"}, \"responseMapping\": \"$util.toJson($context.result)\", \"typeName\": \"Query\"}, {\"dataSourceName\": \"test\", \"fieldName\": \"name\", \"requestMappingTemplate\": {\"version\": \"2017-02-28\", \"operation\": \"Invoke\", \"payload\": \"$util.toJson($context.args)\"}, \"responseMapping\": \"$util.toJson($context.result)\", \"typeName\": \"Todo\"}]"
 ```
 
 
