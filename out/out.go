@@ -174,12 +174,23 @@ func startSchemaCreationOrUpdate(appsyncClient *appsync.AppSync, schemaCreatePar
 	err := req.Send()
 	if err != nil {
 		return err
-
 	}
 	status := *resp.Status
-	if status == "PROCESSING" {
-		time.Sleep(time.Second * 3)
+
+	for status == "PROCESSING" {
+		time.Sleep(3 * time.Second)
+
+		creationStatusOutput, err := appsyncClient.GetSchemaCreationStatus(&appsync.GetSchemaCreationStatusInput{
+			ApiId: schemaCreateParams.ApiId,
+		})
+
+		if err != nil {
+			return err
+		}
+
+		status = *creationStatusOutput.Status
 	}
+
 	return nil
 }
 
