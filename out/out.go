@@ -169,29 +169,39 @@ func createResolver(appsyncClient *appsync.AppSync, params *appsync.CreateResolv
 	return resp.Resolver, nil
 }
 
-func startSchemaCreationOrUpdate(appsyncClient *appsync.AppSync, schemaCreateParams *appsync.StartSchemaCreationInput) error {
+func startSchemaCreationOrUpdate(appsyncClient *appsync.AppSync, schemaCreateParams *appsync.StartSchemaCreationInput, logger *log.Logger) error {
 	req, resp := appsyncClient.StartSchemaCreationRequest(schemaCreateParams)
 	err := req.Send()
 	if err != nil {
 		return err
-
 	}
 	status := *resp.Status
-	if status == "PROCESSING" {
-		time.Sleep(time.Second * 3)
+
+	for status == "PROCESSING" {
+		time.Sleep(3 * time.Second)
+
+		status, _, err = getSchemaCreationStatus(appsyncClient, &appsync.GetSchemaCreationStatusInput{
+			ApiId: schemaCreateParams.ApiId,
+		}, logger)
+
+		if err != nil {
+			return err
+		}
 	}
+
 	return nil
 }
 
-func getSchemaCreationStatus(appsyncClient *appsync.AppSync, schemaStatusParams *appsync.GetSchemaCreationStatusInput, logger *log.Logger) (string, string) {
+func getSchemaCreationStatus(appsyncClient *appsync.AppSync, schemaStatusParams *appsync.GetSchemaCreationStatusInput, logger *log.Logger) (string, string, error) {
 	StatusOutput, err := appsyncClient.GetSchemaCreationStatus(schemaStatusParams)
 	if err != nil {
 		logger.Println("Failed to get Schema Creation status, However the Schema creation might be succeeded, check the AWS console and re-tigger the build if the schema not created/updated: %s", err)
+		return "", "", err
 	}
 	creationStatus := *StatusOutput.Status
 	creationDetails := *StatusOutput.Details
 
-	return creationStatus, creationDetails
+	return creationStatus, creationDetails, nil
 }
 
 // Out will update the resource.
@@ -268,13 +278,17 @@ func Out(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 		}
 
 		// Start create or update schema
-		error := startSchemaCreationOrUpdate(appsyncClient, schemaCreateParams)
+		error := startSchemaCreationOrUpdate(appsyncClient, schemaCreateParams, logger)
 		if error != nil {
 			logger.Fatalf("failed to create/update the schema: %s", error)
 		}
 
 		// get schema creation status
-		creationStatus, creationDetails := getSchemaCreationStatus(appsyncClient, schemaStatusParams, logger)
+		creationStatus, creationDetails, error := getSchemaCreationStatus(appsyncClient, schemaStatusParams, logger)
+
+		if error != nil {
+			logger.Fatalf("failed to create/update the schema: %s", error)
+		}
 
 		// OUTPUT
 		schemaOutput = []metadata{
