@@ -7,10 +7,19 @@ import (
 	"log"
 	"os"
 
+<<<<<<< HEAD
 	resource "github.com/telia-oss/appsync-resource"
 )
 
 var env = os.Getenv("ENV")
+=======
+	"github.com/telia-oss/appsync-resource"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/appsync"
+	yaml "gopkg.in/yaml.v2"
+)
+>>>>>>> Feat: switch to go mod
 
 // Command will update the resource.
 func Command(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
@@ -66,6 +75,7 @@ func Command(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 
 	// Create or update schema
 	if schemaFile != "" {
+<<<<<<< HEAD
 		var schemaFilePath string
 		if env == "development" {
 			pwd, _ := os.Getwd()
@@ -77,11 +87,28 @@ func Command(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 
 		// Start create or update schema
 		error := client.StartSchemaCreationOrUpdate(apiID, schema)
+=======
+		schemaFilePath := fmt.Sprintf("%s/%s", os.Args[1], schemaFile)
+		schema, _ := ioutil.ReadFile(schemaFilePath)
+
+		var schemaCreateParams = &appsync.StartSchemaCreationInput{
+			ApiId:      aws.String(apiID),
+			Definition: schema,
+		}
+
+		var schemaStatusParams = &appsync.GetSchemaCreationStatusInput{
+			ApiId: aws.String(apiID),
+		}
+
+		// Start create or update schema
+		error := client.StartSchemaCreationOrUpdate(schemaCreateParams)
+>>>>>>> Feat: switch to go mod
 		if error != nil {
 			logger.Fatalf("failed to create/update the schema: %s", error)
 		}
 
 		// get schema creation status
+<<<<<<< HEAD
 		creationStatus, creationDetails, err := client.GetSchemaCreationStatus(apiID)
 		if err != nil {
 			logger.Println("Failed to get Schema Creation status, However the Schema creation might be succeeded, check the AWS console and re-tigger the build if the schema not created/updated: %s", err)
@@ -95,10 +122,19 @@ func Command(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 				{Name: "creationStatus", Value: creationStatus},
 				{Name: "creationDetails", Value: creationDetails},
 			}
+=======
+		creationStatus, creationDetails := client.GetSchemaCreationStatus(schemaStatusParams, logger)
+
+		// OUTPUT
+		schemaOutput = []metadata{
+			{Name: "creationStatus", Value: creationStatus},
+			{Name: "creationDetails", Value: creationDetails},
+>>>>>>> Feat: switch to go mod
 		}
 	}
 	// update Resolvers
 	if resolversFile != "" {
+<<<<<<< HEAD
 		var resolversFilePath string
 		if env == "development" {
 			pwd, _ := os.Getwd()
@@ -112,6 +148,17 @@ func Command(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 		if err != nil {
 			logger.Println("failed to create/update", err)
 		}
+=======
+		resolversFilePath := fmt.Sprintf("%s/%s", os.Args[1], resolversFile)
+		resolversFile, _ := ioutil.ReadFile(resolversFilePath)
+		var resolvers resource.Resolvers
+		err := yaml.Unmarshal(resolversFile, &resolvers)
+		if err != nil {
+			panic(err)
+		}
+
+		nResolversSuccessfullyCreated, nResolversfailCreated, nResolversSuccessfullyUpdated, nResolversfailUpdate := client.CreateOrUpdateResolvers(resolvers, apiID, logger)
+>>>>>>> Feat: switch to go mod
 		// OUTPUT
 		resolverOutput = []metadata{
 			{Name: "number of resolvers successfully created", Value: nResolversSuccessfullyCreated},
