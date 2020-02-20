@@ -13,9 +13,9 @@ install:
 
 build: test install
 	@echo "== Build =="
-	env GOOS=$(TARGET) GOARCH=$(ARCH) CGO_ENABLED=0 go build -ldflags="-s -w" -o bin/in in/in.go
-	env GOOS=$(TARGET) GOARCH=$(ARCH) CGO_ENABLED=0  go build -ldflags="-s -w" -o bin/check check/check.go
-	env GOOS=$(TARGET) GOARCH=$(ARCH) CGO_ENABLED=0 go build -ldflags="-s -w" -o bin/out main.go
+	env GOOS=$(TARGET) GOARCH=$(ARCH) CGO_ENABLED=0 go build -ldflags="-s -w" -o bin/in cmd/in/main.go
+	env GOOS=$(TARGET) GOARCH=$(ARCH) CGO_ENABLED=0  go build -ldflags="-s -w" -o bin/check cmd/check/main.go
+	env GOOS=$(TARGET) GOARCH=$(ARCH) CGO_ENABLED=0 go build -ldflags="-s -w" -o bin/out cmd/out/main.go
 
 test:
 	@echo "== Test =="
