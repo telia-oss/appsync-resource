@@ -8,10 +8,6 @@ import (
 	"os"
 
 	"github.com/telia-oss/appsync-resource"
-
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/appsync"
-	yaml "gopkg.in/yaml.v2"
 )
 
 // Command will update the resource.
@@ -71,41 +67,37 @@ func Command(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 		schemaFilePath := fmt.Sprintf("%s/%s", os.Args[1], schemaFile)
 		schema, _ := ioutil.ReadFile(schemaFilePath)
 
-		var schemaCreateParams = &appsync.StartSchemaCreationInput{
-			ApiId:      aws.String(apiID),
-			Definition: schema,
-		}
-
-		var schemaStatusParams = &appsync.GetSchemaCreationStatusInput{
-			ApiId: aws.String(apiID),
-		}
-
 		// Start create or update schema
-		error := client.StartSchemaCreationOrUpdate(schemaCreateParams)
+		error := client.StartSchemaCreationOrUpdate(apiID, schema)
 		if error != nil {
 			logger.Fatalf("failed to create/update the schema: %s", error)
 		}
 
 		// get schema creation status
-		creationStatus, creationDetails := client.GetSchemaCreationStatus(schemaStatusParams, logger)
-
-		// OUTPUT
-		schemaOutput = []metadata{
-			{Name: "creationStatus", Value: creationStatus},
-			{Name: "creationDetails", Value: creationDetails},
+		creationStatus, creationDetails, err := client.GetSchemaCreationStatus(apiID)
+		if err != nil {
+			logger.Println("Failed to get Schema Creation status, However the Schema creation might be succeeded, check the AWS console and re-tigger the build if the schema not created/updated: %s", err)
+			schemaOutput = []metadata{
+				{Name: "creationStatus", Value: "unknown"},
+				{Name: "creationDetails", Value: "unknown"},
+			}
+		} else {
+			// OUTPUT
+			schemaOutput = []metadata{
+				{Name: "creationStatus", Value: creationStatus},
+				{Name: "creationDetails", Value: creationDetails},
+			}
 		}
 	}
 	// update Resolvers
 	if resolversFile != "" {
 		resolversFilePath := fmt.Sprintf("%s/%s", os.Args[1], resolversFile)
 		resolversFile, _ := ioutil.ReadFile(resolversFilePath)
-		var resolvers resource.Resolvers
-		err := yaml.Unmarshal(resolversFile, &resolvers)
-		if err != nil {
-			panic(err)
-		}
 
-		nResolversSuccessfullyCreated, nResolversfailCreated, nResolversSuccessfullyUpdated, nResolversfailUpdate := client.CreateOrUpdateResolvers(resolvers, apiID, logger)
+		nResolversSuccessfullyCreated, nResolversfailCreated, nResolversSuccessfullyUpdated, nResolversfailUpdate, err := client.CreateOrUpdateResolvers(apiID, resolversFile)
+		if err != nil {
+			logger.Println("failed to fetch a resolver with error", err)
+		}
 		// OUTPUT
 		resolverOutput = []metadata{
 			{Name: "number of resolvers successfully created", Value: nResolversSuccessfullyCreated},

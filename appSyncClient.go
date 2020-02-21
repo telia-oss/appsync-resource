@@ -2,7 +2,6 @@ package resource
 
 import (
 	"fmt"
-	"log"
 	"strconv"
 	"time"
 
@@ -11,6 +10,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/appsync"
+
+	yaml "gopkg.in/yaml.v2"
 )
 
 type (
@@ -29,9 +30,9 @@ type (
 
 // AppSync interface
 type AppSync interface {
-	CreateOrUpdateResolvers(resolvers Resolvers, apiID string, logger *log.Logger) (string, string, string, string)
-	StartSchemaCreationOrUpdate(schemaCreateParams *appsync.StartSchemaCreationInput) error
-	GetSchemaCreationStatus(schemaStatusParams *appsync.GetSchemaCreationStatusInput, logger *log.Logger) (string, string)
+	CreateOrUpdateResolvers(apiID string, resolversFile []byte) (string, string, string, string, error)
+	StartSchemaCreationOrUpdate(apiID string, schema []byte) error
+	GetSchemaCreationStatus(apiID string) (string, string, error)
 }
 
 type appSyncClient struct {
@@ -77,7 +78,7 @@ func NewAwsConfig(
 	return awsConfig
 }
 
-func (client *appSyncClient) CreateOrUpdateResolvers(resolvers Resolvers, apiID string, logger *log.Logger) (string, string, string, string) {
+func (client *appSyncClient) CreateOrUpdateResolvers(apiID string, resolversFile []byte) (string, string, string, string, error) {
 	// number of resolvers successfully created
 	var nResolversSuccessfullyCreated = 0
 	// number of resolver successfully updated
@@ -87,6 +88,12 @@ func (client *appSyncClient) CreateOrUpdateResolvers(resolvers Resolvers, apiID 
 	// number of resolver fail to update
 	var nResolversfailUpdate = 0
 
+	var resolvers Resolvers
+	err := yaml.Unmarshal(resolversFile, &resolvers)
+	if err != nil {
+		return strconv.Itoa(nResolversSuccessfullyCreated), strconv.Itoa(nResolversfailCreated), strconv.Itoa(nResolversSuccessfullyUpdated), strconv.Itoa(nResolversfailUpdate), err
+	}
+
 	for _, resolver := range resolvers.Resolvers {
 		resolverResp, err := client.getResolver(&appsync.GetResolverInput{
 			ApiId:     aws.String(apiID),
@@ -95,7 +102,7 @@ func (client *appSyncClient) CreateOrUpdateResolvers(resolvers Resolvers, apiID 
 		})
 
 		if err != nil {
-			logger.Println("failed to fetch a resolver with error", err)
+			return strconv.Itoa(nResolversSuccessfullyCreated), strconv.Itoa(nResolversfailCreated), strconv.Itoa(nResolversSuccessfullyUpdated), strconv.Itoa(nResolversfailUpdate), err
 		}
 		if resolverResp != nil {
 			var params = &appsync.UpdateResolverInput{
@@ -109,7 +116,7 @@ func (client *appSyncClient) CreateOrUpdateResolvers(resolvers Resolvers, apiID 
 			_, err := client.updateResolver(params)
 			if err != nil {
 				nResolversfailUpdate++
-				logger.Println("failed to fetch a resolver with error", err)
+				return strconv.Itoa(nResolversSuccessfullyCreated), strconv.Itoa(nResolversfailCreated), strconv.Itoa(nResolversSuccessfullyUpdated), strconv.Itoa(nResolversfailUpdate), err
 			}
 			nResolversSuccessfullyUpdated++
 		} else {
@@ -124,13 +131,13 @@ func (client *appSyncClient) CreateOrUpdateResolvers(resolvers Resolvers, apiID 
 			_, err := client.createResolver(params)
 			if err != nil {
 				nResolversfailCreated++
-				logger.Println("failed to fetch a resolver with error", err)
+				return strconv.Itoa(nResolversSuccessfullyCreated), strconv.Itoa(nResolversfailCreated), strconv.Itoa(nResolversSuccessfullyUpdated), strconv.Itoa(nResolversfailUpdate), err
 			}
 
 			nResolversSuccessfullyCreated++
 		}
 	}
-	return strconv.Itoa(nResolversSuccessfullyCreated), strconv.Itoa(nResolversfailCreated), strconv.Itoa(nResolversSuccessfullyUpdated), strconv.Itoa(nResolversfailUpdate)
+	return strconv.Itoa(nResolversSuccessfullyCreated), strconv.Itoa(nResolversfailCreated), strconv.Itoa(nResolversSuccessfullyUpdated), strconv.Itoa(nResolversfailUpdate), nil
 }
 
 func (client *appSyncClient) getResolver(params *appsync.GetResolverInput) (*appsync.Resolver, error) {
@@ -167,7 +174,17 @@ func (client *appSyncClient) createResolver(params *appsync.CreateResolverInput)
 	return resp.Resolver, nil
 }
 
-func (client *appSyncClient) StartSchemaCreationOrUpdate(schemaCreateParams *appsync.StartSchemaCreationInput) error {
+func (client *appSyncClient) StartSchemaCreationOrUpdate(apiID string, schema []byte) error {
+
+	schemaCreateParams := &appsync.StartSchemaCreationInput{
+		ApiId:      aws.String(apiID),
+		Definition: schema,
+	}
+
+	schemaStatusParams := &appsync.GetSchemaCreationStatusInput{
+		ApiId: aws.String(apiID),
+	}
+
 	req, resp := client.appSyncClient.StartSchemaCreationRequest(schemaCreateParams)
 	err := req.Send()
 	if err != nil {
@@ -175,19 +192,34 @@ func (client *appSyncClient) StartSchemaCreationOrUpdate(schemaCreateParams *app
 
 	}
 	status := *resp.Status
-	if status == "PROCESSING" {
-		time.Sleep(time.Second * 3)
+	for status == "PROCESSING" {
+		time.Sleep(3 * time.Second)
+
+		status, _, err = client.getSchemaCreationStatus(schemaStatusParams)
+
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func (client *appSyncClient) GetSchemaCreationStatus(schemaStatusParams *appsync.GetSchemaCreationStatusInput, logger *log.Logger) (string, string) {
+func (client *appSyncClient) getSchemaCreationStatus(schemaStatusParams *appsync.GetSchemaCreationStatusInput) (string, string, error) {
 	StatusOutput, err := client.appSyncClient.GetSchemaCreationStatus(schemaStatusParams)
 	if err != nil {
-		logger.Println("Failed to get Schema Creation status, However the Schema creation might be succeeded, check the AWS console and re-tigger the build if the schema not created/updated: %s", err)
+		return "", "", err
 	}
 	creationStatus := *StatusOutput.Status
 	creationDetails := *StatusOutput.Details
 
-	return creationStatus, creationDetails
+	return creationStatus, creationDetails, nil
+}
+
+func (client *appSyncClient) GetSchemaCreationStatus(apiID string) (string, string, error) {
+	schemaStatusParams := &appsync.GetSchemaCreationStatusInput{
+		ApiId: aws.String(apiID),
+	}
+
+	creationStatus, creationDetails, err := client.getSchemaCreationStatus(schemaStatusParams)
+	return creationStatus, creationDetails, err
 }
