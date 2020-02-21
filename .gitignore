@@ -8,6 +8,5 @@ vendor
 bin
 
 # test file
-out
 input.json
 test
