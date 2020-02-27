@@ -1,4 +1,4 @@
-FROM golang:1.11 as builder
+FROM golang:1.13.1 as builder
 
 LABEL MAINTAINER="telia-oss"
 
