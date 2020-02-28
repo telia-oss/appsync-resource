@@ -10,7 +10,6 @@ type (
 	version struct {
 		Ref string `json:"ref"`
 	}
-	// InputJSON ...
 	InputJSON struct {
 		Params  map[string]string `json:"params"`
 		Source  map[string]string `json:"source"`

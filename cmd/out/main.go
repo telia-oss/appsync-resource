@@ -8,13 +8,11 @@ import (
 	"github.com/telia-oss/appsync-resource/out"
 )
 
-// createOutput ...
 func createOutput(output interface{}, encoder *json.Encoder, logger *log.Logger) error {
 	_, err := json.MarshalIndent(output, "", "  ")
 	if err != nil {
 		return err
 	}
-	// encode output to stdout
 	return encoder.Encode(output)
 
 }
