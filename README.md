@@ -1,7 +1,6 @@
 [![Build Status](https://travis-ci.org/telia-oss/appsync-resource.svg?branch=master)](https://travis-ci.org/telia-oss/appsync-resource)
 [![Go Report Card](https://goreportcard.com/badge/github.com/telia-oss/appsync-resource)](https://goreportcard.com/report/github.com/telia-oss/appsync-resource)
 
-
 # AWS AppSync resource
 
 A Concourse resource to update AppSync schema. Written in Go.

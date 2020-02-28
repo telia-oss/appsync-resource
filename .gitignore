@@ -8,6 +8,7 @@ vendor
 bin
 
 # test file
-out
 input.json
 test
+resolvers-test.yml
+schema-test.graphql

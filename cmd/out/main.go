@@ -32,7 +32,7 @@ func main() {
 		logger.Fatalf("Failed to decode to stdin: %s", err)
 	}
 
-	output, err := out.Out(input, logger)
+	output, err := out.Command(input, logger)
 	if err != nil {
 		logger.Fatalf("Input missing a field: %s", err)
 	}
