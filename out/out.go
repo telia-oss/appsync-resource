@@ -7,8 +7,10 @@ import (
 	"log"
 	"os"
 
-	"github.com/telia-oss/appsync-resource"
+	resource "github.com/telia-oss/appsync-resource"
 )
+
+var env = os.Getenv("ENV")
 
 // Command will update the resource.
 func Command(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
@@ -64,7 +66,13 @@ func Command(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 
 	// Create or update schema
 	if schemaFile != "" {
-		schemaFilePath := fmt.Sprintf("%s/%s", os.Args[1], schemaFile)
+		var schemaFilePath string
+		if env == "development" {
+			pwd, _ := os.Getwd()
+			schemaFilePath = fmt.Sprintf("%s/%s", pwd, schemaFile)
+		} else {
+			schemaFilePath = fmt.Sprintf("%s/%s", os.Args[1], schemaFile)
+		}
 		schema, _ := ioutil.ReadFile(schemaFilePath)
 
 		// Start create or update schema
@@ -91,12 +99,18 @@ func Command(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 	}
 	// update Resolvers
 	if resolversFile != "" {
-		resolversFilePath := fmt.Sprintf("%s/%s", os.Args[1], resolversFile)
+		var resolversFilePath string
+		if env == "development" {
+			pwd, _ := os.Getwd()
+			resolversFilePath = fmt.Sprintf("%s/%s", pwd, resolversFile)
+		} else {
+			resolversFilePath = fmt.Sprintf("%s/%s", os.Args[1], resolversFile)
+		}
 		resolversFile, _ := ioutil.ReadFile(resolversFilePath)
 
 		nResolversSuccessfullyCreated, nResolversfailCreated, nResolversSuccessfullyUpdated, nResolversfailUpdate, err := client.CreateOrUpdateResolvers(apiID, resolversFile)
 		if err != nil {
-			logger.Println("failed to fetch a resolver with error", err)
+			logger.Println("failed to create/update", err)
 		}
 		// OUTPUT
 		resolverOutput = []metadata{

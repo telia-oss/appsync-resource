@@ -10,3 +10,5 @@ bin
 # test file
 input.json
 test
+resolvers-test.yml
+schema-test.graphql

@@ -2,6 +2,7 @@ package resource
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"time"
 
@@ -13,6 +14,8 @@ import (
 
 	yaml "gopkg.in/yaml.v2"
 )
+
+var env = os.Getenv("ENV")
 
 type (
 	Resolvers struct {
@@ -70,9 +73,16 @@ func NewAwsConfig(
 		regionName = "eu-west-1"
 	}
 
-	awsConfig := &aws.Config{
-		Region:      aws.String(regionName),
-		Credentials: creds,
+	var awsConfig *aws.Config
+	if env == "development" {
+		awsConfig = &aws.Config{
+			Region: aws.String(regionName),
+		}
+	} else {
+		awsConfig = &aws.Config{
+			Region:      aws.String(regionName),
+			Credentials: creds,
+		}
 	}
 
 	return awsConfig
@@ -95,14 +105,17 @@ func (client *appSyncClient) CreateOrUpdateResolvers(apiID string, resolversFile
 	}
 
 	for _, resolver := range resolvers.Resolvers {
+		resolverFieldName := resolver.FieldName
+		resolverTypeName := resolver.TypeName
 		resolverResp, err := client.getResolver(&appsync.GetResolverInput{
 			ApiId:     aws.String(apiID),
-			FieldName: aws.String(resolver.FieldName),
-			TypeName:  aws.String(resolver.TypeName),
+			FieldName: aws.String(resolverFieldName),
+			TypeName:  aws.String(resolverTypeName),
 		})
 
 		if err != nil {
-			return strconv.Itoa(nResolversSuccessfullyCreated), strconv.Itoa(nResolversfailCreated), strconv.Itoa(nResolversSuccessfullyUpdated), strconv.Itoa(nResolversfailUpdate), err
+			resolver := fmt.Sprintf("Resolver, FieldName:%s, TypeName: %s, Error: %s", resolverFieldName, resolverTypeName, err)
+			fmt.Println("faild to fetch", resolver)
 		}
 		if resolverResp != nil {
 			var params = &appsync.UpdateResolverInput{
@@ -116,7 +129,6 @@ func (client *appSyncClient) CreateOrUpdateResolvers(apiID string, resolversFile
 			_, err := client.updateResolver(params)
 			if err != nil {
 				nResolversfailUpdate++
-				return strconv.Itoa(nResolversSuccessfullyCreated), strconv.Itoa(nResolversfailCreated), strconv.Itoa(nResolversSuccessfullyUpdated), strconv.Itoa(nResolversfailUpdate), err
 			}
 			nResolversSuccessfullyUpdated++
 		} else {
@@ -131,7 +143,6 @@ func (client *appSyncClient) CreateOrUpdateResolvers(apiID string, resolversFile
 			_, err := client.createResolver(params)
 			if err != nil {
 				nResolversfailCreated++
-				return strconv.Itoa(nResolversSuccessfullyCreated), strconv.Itoa(nResolversfailCreated), strconv.Itoa(nResolversSuccessfullyUpdated), strconv.Itoa(nResolversfailUpdate), err
 			}
 
 			nResolversSuccessfullyCreated++
