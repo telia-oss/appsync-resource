@@ -2,6 +2,7 @@ package resource
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"time"
@@ -33,7 +34,7 @@ type (
 
 // AppSync interface
 type AppSync interface {
-	CreateOrUpdateResolvers(apiID string, resolversFile []byte) (string, string, string, string, error)
+	CreateOrUpdateResolvers(apiID string, resolversFile []byte, logger *log.Logger) (string, string, string, string, error)
 	StartSchemaCreationOrUpdate(apiID string, schema []byte) error
 	GetSchemaCreationStatus(apiID string) (string, string, error)
 }
@@ -88,7 +89,7 @@ func NewAwsConfig(
 	return awsConfig
 }
 
-func (client *appSyncClient) CreateOrUpdateResolvers(apiID string, resolversFile []byte) (string, string, string, string, error) {
+func (client *appSyncClient) CreateOrUpdateResolvers(apiID string, resolversFile []byte, logger *log.Logger) (string, string, string, string, error) {
 	// number of resolvers successfully created
 	var nResolversSuccessfullyCreated = 0
 	// number of resolver successfully updated
@@ -115,7 +116,7 @@ func (client *appSyncClient) CreateOrUpdateResolvers(apiID string, resolversFile
 
 		if err != nil {
 			resolver := fmt.Sprintf("Resolver, FieldName:%s, TypeName: %s, Error: %s", resolverFieldName, resolverTypeName, err)
-			fmt.Println("faild to fetch", resolver)
+			logger.Println("faild to fetch", resolver)
 		}
 		if resolverResp != nil {
 			var params = &appsync.UpdateResolverInput{

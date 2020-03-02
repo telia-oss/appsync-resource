@@ -9,12 +9,7 @@ import (
 )
 
 func createOutput(output interface{}, encoder *json.Encoder, logger *log.Logger) error {
-	_, err := json.MarshalIndent(output, "", "  ")
-	if err != nil {
-		return err
-	}
 	return encoder.Encode(output)
-
 }
 
 func main() {
@@ -32,7 +27,7 @@ func main() {
 
 	output, err := out.Command(input, logger)
 	if err != nil {
-		logger.Fatalf("Input missing a field: %s", err)
+		logger.Fatalf("Error execute out command: %s", err)
 	}
 
 	if err := createOutput(output, encoder, logger); err != nil {

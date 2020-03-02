@@ -39,15 +39,14 @@ func Command(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 		return outOutputJSON{}, errors.New("aws region_name not set")
 	}
 
-	schemaFile, _ := input.Params["schema_file"]
+	schemaFile, ok := input.Params["schema_file"]
 
-	resolversFile, _ := input.Params["resolvers_file"]
+	resolversFile, ok := input.Params["resolvers_file"]
 
 	var ref = input.Version.Ref
 	var output outOutputJSON
 	var resolverOutput []metadata
 	var schemaOutput []metadata
-
 	awsConfig := resource.NewAwsConfig(
 		accessKey,
 		secretKey,
@@ -60,7 +59,6 @@ func Command(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 	if schemaFile == "" && resolversFile == "" {
 		return outOutputJSON{}, errors.New("resolversFile and schemaFile both are not set")
 	}
-
 	if schemaFile != "" {
 		var schemaFilePath string
 		if env == "development" {
@@ -69,7 +67,10 @@ func Command(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 		} else {
 			schemaFilePath = fmt.Sprintf("%s/%s", os.Args[1], schemaFile)
 		}
-		schema, _ := ioutil.ReadFile(schemaFilePath)
+		schema, serr := ioutil.ReadFile(schemaFilePath)
+		if serr != nil {
+			logger.Fatalf("can't read the schema file: %s", serr)
+		}
 
 		error := client.StartSchemaCreationOrUpdate(apiID, schema)
 		if error != nil {
@@ -98,9 +99,12 @@ func Command(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 		} else {
 			resolversFilePath = fmt.Sprintf("%s/%s", os.Args[1], resolversFile)
 		}
-		resolversFile, _ := ioutil.ReadFile(resolversFilePath)
+		resolversFile, rerr := ioutil.ReadFile(resolversFilePath)
+		if rerr != nil {
+			logger.Fatalf("can't read the resolvers file: %s", rerr)
+		}
 
-		nResolversSuccessfullyCreated, nResolversfailCreated, nResolversSuccessfullyUpdated, nResolversfailUpdate, err := client.CreateOrUpdateResolvers(apiID, resolversFile)
+		nResolversSuccessfullyCreated, nResolversfailCreated, nResolversSuccessfullyUpdated, nResolversfailUpdate, err := client.CreateOrUpdateResolvers(apiID, resolversFile, logger)
 		if err != nil {
 			logger.Println("failed to create/update", err)
 		}
