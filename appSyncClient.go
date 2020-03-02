@@ -116,7 +116,7 @@ func (client *appSyncClient) CreateOrUpdateResolvers(apiID string, resolversFile
 
 		if err != nil {
 			resolver := fmt.Sprintf("Resolver, FieldName:%s, TypeName: %s, Error: %s", resolverFieldName, resolverTypeName, err)
-			log.Println("faild to fetch", resolver)
+			logger.Println("faild to fetch", resolver)
 		}
 		if resolverResp != nil {
 			var params = &appsync.UpdateResolverInput{
