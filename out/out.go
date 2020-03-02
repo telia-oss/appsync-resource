@@ -47,7 +47,6 @@ func Command(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 	var output outOutputJSON
 	var resolverOutput []metadata
 	var schemaOutput []metadata
-	fmt.Println("bootstrap client")
 	awsConfig := resource.NewAwsConfig(
 		accessKey,
 		secretKey,
@@ -60,7 +59,6 @@ func Command(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 	if schemaFile == "" && resolversFile == "" {
 		return outOutputJSON{}, errors.New("resolversFile and schemaFile both are not set")
 	}
-	fmt.Println("The ARGS: ", os.Args)
 	if schemaFile != "" {
 		var schemaFilePath string
 		if env == "development" {
@@ -73,7 +71,6 @@ func Command(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 		if serr != nil {
 			logger.Fatalf("can't read the schema file: %s", serr)
 		}
-		fmt.Println("The schema: ", schema)
 
 		error := client.StartSchemaCreationOrUpdate(apiID, schema)
 		if error != nil {
@@ -107,7 +104,7 @@ func Command(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 			logger.Fatalf("can't read the resolvers file: %s", rerr)
 		}
 
-		nResolversSuccessfullyCreated, nResolversfailCreated, nResolversSuccessfullyUpdated, nResolversfailUpdate, err := client.CreateOrUpdateResolvers(apiID, resolversFile)
+		nResolversSuccessfullyCreated, nResolversfailCreated, nResolversSuccessfullyUpdated, nResolversfailUpdate, err := client.CreateOrUpdateResolvers(apiID, resolversFile, logger)
 		if err != nil {
 			logger.Println("failed to create/update", err)
 		}

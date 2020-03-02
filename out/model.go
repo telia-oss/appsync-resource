@@ -17,7 +17,7 @@ type (
 	checkOutputJSON []version
 	inOutputJSON    struct {
 		Version  version    `json:"version"`
-		Metadata []metadata `json:"metadata"`
+		Metadata []metadata `json:"metadata,omitempty"`
 	}
 	outOutputJSON inOutputJSON
 )
