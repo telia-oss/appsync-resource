@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -21,20 +20,36 @@ var env = os.Getenv("ENV")
 type (
 	Resolvers struct {
 		Resolvers []Resolver `yaml:"resolvers"`
+		Functions []Function `yaml:"functions"`
 	}
 
 	Resolver struct {
+		DataSourceName          string   `yaml:"dataSource"`
+		FieldName               string   `yaml:"fieldName"`
+		RequestMappingTemplate  string   `yaml:"requestMappingTemplate"`
+		ResponseMappingTemplate string   `yaml:"responseMappingTemplate"`
+		Functions               []string `yaml:"functions"`
+		TypeName                string   `yaml:"typeName"`
+	}
+
+	Function struct {
 		DataSourceName          string `yaml:"dataSource"`
-		FieldName               string `yaml:"fieldName"`
+		Name                    string `yaml:"name"`
 		RequestMappingTemplate  string `yaml:"requestMappingTemplate"`
 		ResponseMappingTemplate string `yaml:"responseMappingTemplate"`
-		TypeName                string `yaml:"typeName"`
+	}
+
+	Statistics struct {
+		Created        int
+		Updated        int
+		FailedToCreate int
+		FailedToUpdate int
 	}
 )
 
 // AppSync interface
 type AppSync interface {
-	CreateOrUpdateResolvers(apiID string, resolversFile []byte, logger *log.Logger) (string, string, string, string, error)
+	CreateOrUpdateResolvers(apiID string, resolversFile []byte, logger *log.Logger) (Statistics, Statistics, error)
 	StartSchemaCreationOrUpdate(apiID string, schema []byte) error
 	GetSchemaCreationStatus(apiID string) (string, string, error)
 }
@@ -46,14 +61,19 @@ type appSyncClient struct {
 
 func NewAppSyncClient(
 	awsConfig *aws.Config,
-) AppSync {
-	session := session.New(awsConfig)
+) (AppSync, error) {
+	session, err := session.NewSession(awsConfig)
+
+	if err != nil {
+		return nil, err
+	}
+
 	client := appsync.New(session, awsConfig)
 
 	return &appSyncClient{
 		appSyncClient: client,
 		session:       session,
-	}
+	}, nil
 }
 
 func NewAwsConfig(
@@ -89,20 +109,63 @@ func NewAwsConfig(
 	return awsConfig
 }
 
-func (client *appSyncClient) CreateOrUpdateResolvers(apiID string, resolversFile []byte, logger *log.Logger) (string, string, string, string, error) {
-	// number of resolvers successfully created
-	var nResolversSuccessfullyCreated = 0
-	// number of resolver successfully updated
-	var nResolversSuccessfullyUpdated = 0
-	// number of resolver fail to create
-	var nResolversfailCreated = 0
-	// number of resolver fail to update
-	var nResolversfailUpdate = 0
+func (client *appSyncClient) CreateOrUpdateResolvers(apiID string, resolversFile []byte, logger *log.Logger) (Statistics, Statistics, error) {
+	resolverStatistics := Statistics{}
+	functionStatistics := Statistics{}
 
 	var resolvers Resolvers
 	err := yaml.Unmarshal(resolversFile, &resolvers)
 	if err != nil {
-		return strconv.Itoa(nResolversSuccessfullyCreated), strconv.Itoa(nResolversfailCreated), strconv.Itoa(nResolversSuccessfullyUpdated), strconv.Itoa(nResolversfailUpdate), err
+		return resolverStatistics, functionStatistics, err
+	}
+
+	functions, err := client.listAllFunctions(apiID)
+
+	if err != nil {
+		return resolverStatistics, functionStatistics, err
+	}
+
+	for _, function := range resolvers.Functions {
+		functionName := function.Name
+
+		existingFunction := findFunctionByName(functionName, functions)
+
+		if existingFunction != nil {
+			_, err := client.updateFunction(&appsync.UpdateFunctionInput{
+				ApiId:                   aws.String(apiID),
+				DataSourceName:          aws.String(function.DataSourceName),
+				RequestMappingTemplate:  aws.String(function.RequestMappingTemplate),
+				ResponseMappingTemplate: aws.String(function.ResponseMappingTemplate),
+				FunctionId:              existingFunction.FunctionId,
+				Description:             aws.String(function.Name),
+				Name:                    aws.String(function.Name),
+				FunctionVersion:         aws.String("2018-05-29"),
+			})
+			if err != nil {
+				fmt.Printf("Function %s failed to update: %s", function.Name, err)
+				functionStatistics.FailedToUpdate++
+			} else {
+				functionStatistics.Updated++
+			}
+		} else {
+			function, err := client.createFunction(&appsync.CreateFunctionInput{
+				ApiId:                   aws.String(apiID),
+				DataSourceName:          aws.String(function.DataSourceName),
+				RequestMappingTemplate:  aws.String(function.RequestMappingTemplate),
+				ResponseMappingTemplate: aws.String(function.ResponseMappingTemplate),
+				Description:             aws.String(function.Name),
+				Name:                    aws.String(function.Name),
+				FunctionVersion:         aws.String("2018-05-29"),
+			})
+
+			if err != nil {
+				fmt.Printf("Function %s failed to create: %s", *function.Name, err)
+				functionStatistics.FailedToCreate++
+			} else {
+				functions = append(functions, function)
+				functionStatistics.Created++
+			}
+		}
 	}
 
 	for _, resolver := range resolvers.Resolvers {
@@ -118,38 +181,86 @@ func (client *appSyncClient) CreateOrUpdateResolvers(apiID string, resolversFile
 			resolver := fmt.Sprintf("Resolver, FieldName:%s, TypeName: %s, Error: %s", resolverFieldName, resolverTypeName, err)
 			logger.Println("faild to fetch", resolver)
 		}
+
+		dataSourceName := aws.String(resolver.DataSourceName)
+		var pipelineConfig *appsync.PipelineConfig
+		resolverKind := appsync.ResolverKindUnit
+
+		shouldContinue := true
+		if len(resolver.Functions) > 0 {
+			resolverKind = appsync.ResolverKindPipeline
+			pipelineConfig = &appsync.PipelineConfig{}
+
+			for i := range resolver.Functions {
+				existingFunction := findFunctionByName(resolver.Functions[i], functions)
+
+				if existingFunction == nil {
+					logger.Printf("Failed to find function: %s, I will not continue with updating resolver type: %s, field: %s\n",
+						resolver.Functions[i], resolver.TypeName, resolver.FieldName)
+					shouldContinue = false
+					break
+				}
+
+				pipelineConfig.Functions = append(pipelineConfig.Functions, existingFunction.FunctionId)
+			}
+
+			dataSourceName = nil
+		}
+
+		if !shouldContinue {
+			continue
+		}
+
 		if resolverResp != nil {
 			var params = &appsync.UpdateResolverInput{
 				ApiId:                   aws.String(apiID),
-				DataSourceName:          aws.String(resolver.DataSourceName),
+				DataSourceName:          dataSourceName,
 				FieldName:               aws.String(resolver.FieldName),
-				RequestMappingTemplate:  aws.String(fmt.Sprintf("%s", resolver.RequestMappingTemplate)),
+				RequestMappingTemplate:  aws.String(resolver.RequestMappingTemplate),
 				ResponseMappingTemplate: aws.String(resolver.ResponseMappingTemplate),
 				TypeName:                aws.String(resolver.TypeName),
+				Kind:                    &resolverKind,
+				PipelineConfig:          pipelineConfig,
 			}
 			_, err := client.updateResolver(params)
 			if err != nil {
-				nResolversfailUpdate++
+				fmt.Printf("Resolver on type %s and field %s failed to update: %s", resolver.TypeName, resolver.FieldName, err)
+				resolverStatistics.FailedToUpdate++
+			} else {
+				resolverStatistics.Updated++
 			}
-			nResolversSuccessfullyUpdated++
 		} else {
 			var params = &appsync.CreateResolverInput{
 				ApiId:                   aws.String(apiID),
-				DataSourceName:          aws.String(resolver.DataSourceName),
+				DataSourceName:          dataSourceName,
 				FieldName:               aws.String(resolver.FieldName),
-				RequestMappingTemplate:  aws.String(fmt.Sprintf("%s", resolver.RequestMappingTemplate)),
+				RequestMappingTemplate:  aws.String(resolver.RequestMappingTemplate),
 				ResponseMappingTemplate: aws.String(resolver.ResponseMappingTemplate),
 				TypeName:                aws.String(resolver.TypeName),
+				Kind:                    &resolverKind,
+				PipelineConfig:          pipelineConfig,
 			}
 			_, err := client.createResolver(params)
 			if err != nil {
-				nResolversfailCreated++
+				fmt.Printf("Resolver on type %s and field %s failed to create: %s", resolver.TypeName, resolver.FieldName, err)
+				resolverStatistics.FailedToCreate++
+			} else {
+				resolverStatistics.Created++
 			}
-
-			nResolversSuccessfullyCreated++
 		}
 	}
-	return strconv.Itoa(nResolversSuccessfullyCreated), strconv.Itoa(nResolversfailCreated), strconv.Itoa(nResolversSuccessfullyUpdated), strconv.Itoa(nResolversfailUpdate), nil
+
+	return resolverStatistics, functionStatistics, nil
+}
+
+func findFunctionByName(name string, functions []*appsync.FunctionConfiguration) *appsync.FunctionConfiguration {
+	for _, function := range functions {
+		if *function.Name == name {
+			return function
+		}
+	}
+
+	return nil
 }
 
 func (client *appSyncClient) getResolver(params *appsync.GetResolverInput) (*appsync.Resolver, error) {
@@ -164,6 +275,36 @@ func (client *appSyncClient) getResolver(params *appsync.GetResolverInput) (*app
 
 }
 
+func (client *appSyncClient) listAllFunctions(apiID string) ([]*appsync.FunctionConfiguration, error) {
+	var out []*appsync.FunctionConfiguration
+
+	params := appsync.ListFunctionsInput{
+		ApiId:      aws.String(apiID),
+		MaxResults: aws.Int64(25),
+		NextToken:  nil,
+	}
+
+	for {
+		req, resp := client.appSyncClient.ListFunctionsRequest(&params)
+
+		err := req.Send()
+		if err != nil {
+			return nil, err
+		}
+
+		out = append(out, resp.Functions...)
+
+		if resp.NextToken == nil {
+			break
+		}
+
+		params.NextToken = resp.NextToken
+	}
+
+	return out, nil
+
+}
+
 func (client *appSyncClient) updateResolver(params *appsync.UpdateResolverInput) (*appsync.Resolver, error) {
 	req, resp := client.appSyncClient.UpdateResolverRequest(params)
 
@@ -175,6 +316,17 @@ func (client *appSyncClient) updateResolver(params *appsync.UpdateResolverInput)
 	return resp.Resolver, nil
 }
 
+func (client *appSyncClient) updateFunction(params *appsync.UpdateFunctionInput) (*appsync.FunctionConfiguration, error) {
+	req, resp := client.appSyncClient.UpdateFunctionRequest(params)
+
+	err := req.Send()
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.FunctionConfiguration, nil
+}
+
 func (client *appSyncClient) createResolver(params *appsync.CreateResolverInput) (*appsync.Resolver, error) {
 	req, resp := client.appSyncClient.CreateResolverRequest(params)
 
@@ -184,6 +336,17 @@ func (client *appSyncClient) createResolver(params *appsync.CreateResolverInput)
 	}
 
 	return resp.Resolver, nil
+}
+
+func (client *appSyncClient) createFunction(params *appsync.CreateFunctionInput) (*appsync.FunctionConfiguration, error) {
+	req, resp := client.appSyncClient.CreateFunctionRequest(params)
+
+	err := req.Send()
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.FunctionConfiguration, nil
 }
 
 func (client *appSyncClient) StartSchemaCreationOrUpdate(apiID string, schema []byte) error {
