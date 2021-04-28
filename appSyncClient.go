@@ -119,7 +119,7 @@ func (client *appSyncClient) CreateOrUpdateResolvers(apiID string, resolversFile
 		return resolverStatistics, functionStatistics, err
 	}
 
-	functions, err := client.listAllFunctions(apiID)
+	functions, err := client.getFunctions(apiID)
 
 	if err != nil {
 		return resolverStatistics, functionStatistics, err
@@ -128,7 +128,7 @@ func (client *appSyncClient) CreateOrUpdateResolvers(apiID string, resolversFile
 	for _, function := range resolvers.Functions {
 		functionName := function.Name
 
-		existingFunction := findFunctionByName(functionName, functions)
+		existingFunction := getFunctionByName(functionName, functions)
 
 		if existingFunction != nil {
 			_, err := client.updateFunction(&appsync.UpdateFunctionInput{
@@ -192,7 +192,7 @@ func (client *appSyncClient) CreateOrUpdateResolvers(apiID string, resolversFile
 			pipelineConfig = &appsync.PipelineConfig{}
 
 			for i := range resolver.Functions {
-				existingFunction := findFunctionByName(resolver.Functions[i], functions)
+				existingFunction := getFunctionByName(resolver.Functions[i], functions)
 
 				if existingFunction == nil {
 					logger.Printf("Failed to find function: %s, I will not continue with updating resolver type: %s, field: %s\n",
@@ -253,7 +253,7 @@ func (client *appSyncClient) CreateOrUpdateResolvers(apiID string, resolversFile
 	return resolverStatistics, functionStatistics, nil
 }
 
-func findFunctionByName(name string, functions []*appsync.FunctionConfiguration) *appsync.FunctionConfiguration {
+func getFunctionByName(name string, functions []*appsync.FunctionConfiguration) *appsync.FunctionConfiguration {
 	for _, function := range functions {
 		if *function.Name == name {
 			return function
@@ -275,7 +275,7 @@ func (client *appSyncClient) getResolver(params *appsync.GetResolverInput) (*app
 
 }
 
-func (client *appSyncClient) listAllFunctions(apiID string) ([]*appsync.FunctionConfiguration, error) {
+func (client *appSyncClient) getFunctions(apiID string) ([]*appsync.FunctionConfiguration, error) {
 	var out []*appsync.FunctionConfiguration
 
 	params := appsync.ListFunctionsInput{
