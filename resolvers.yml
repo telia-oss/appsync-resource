@@ -1,5 +1,36 @@
+functions:
+  - dataSource: none_datasource
+    name: todo_one
+    requestMappingTemplate: '
+      #set( $event = {
+        "id": "test",
+        "name": "Some todo"
+      } )
+
+      {
+          "version" : "2018-05-29",
+          "payload": $util.toJson($event)
+      }
+    '
+    responseMappingTemplate: $util.toJson($context.result)
+  - dataSource: none_datasource
+    name: todo_two
+    requestMappingTemplate: '
+      #set( $event = {
+        "id": $context.prev.result.id,
+        "name": $context.prev.result.name,
+        "description": 42,
+        "priority": 123
+      } )
+
+      {
+          "version" : "2018-05-29",
+          "payload": $util.toJson($event)
+      }
+    '
+    responseMappingTemplate:  $util.toJson($context.result)
 resolvers:    
-  - dataSource: test
+  - dataSource: none_datasource
     typeName: Query
     fieldName: getTodos
     requestMappingTemplate: >
@@ -12,4 +43,11 @@ resolvers:
           "operation": "Invoke",
           "payload": $util.toJson($payload)
       }
+    responseMappingTemplate: $util.toJson($context.result)
+  - typeName: Query
+    fieldName: todo
+    functions:
+      - todo_one
+      - todo_two
+    requestMappingTemplate: '{}'
     responseMappingTemplate: $util.toJson($context.result)

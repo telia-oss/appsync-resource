@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strconv"
 
 	resource "github.com/telia-oss/appsync-resource"
 )
@@ -54,7 +55,11 @@ func Command(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 		regionName,
 	)
 
-	client := resource.NewAppSyncClient(awsConfig)
+	client, err := resource.NewAppSyncClient(awsConfig)
+
+	if err != nil {
+		return outOutputJSON{}, err
+	}
 
 	if schemaFile == "" && resolversFile == "" {
 		return outOutputJSON{}, errors.New("resolversFile and schemaFile both are not set")
@@ -104,15 +109,20 @@ func Command(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 			logger.Fatalf("can't read the resolvers file: %s", rerr)
 		}
 
-		nResolversSuccessfullyCreated, nResolversfailCreated, nResolversSuccessfullyUpdated, nResolversfailUpdate, err := client.CreateOrUpdateResolvers(apiID, resolversFile, logger)
+		resolvers, functions, err := client.CreateOrUpdateResolvers(apiID, resolversFile, logger)
 		if err != nil {
 			logger.Println("failed to create/update", err)
 		}
 		resolverOutput = []metadata{
-			{Name: "number of resolvers successfully created", Value: nResolversSuccessfullyCreated},
-			{Name: "number of resolver successfully updated", Value: nResolversSuccessfullyUpdated},
-			{Name: "number of resolver fail to create", Value: nResolversfailCreated},
-			{Name: "number of resolver fail to update", Value: nResolversfailUpdate},
+			{Name: "number of resolvers successfully created", Value: strconv.Itoa(resolvers.Created)},
+			{Name: "number of resolver successfully updated", Value: strconv.Itoa(resolvers.Updated)},
+			{Name: "number of resolver fail to create", Value: strconv.Itoa(resolvers.FailedToCreate)},
+			{Name: "number of resolver fail to update", Value: strconv.Itoa(resolvers.FailedToUpdate)},
+
+			{Name: "number of functions successfully created", Value: strconv.Itoa(functions.Created)},
+			{Name: "number of functions successfully updated", Value: strconv.Itoa(functions.Updated)},
+			{Name: "number of functions fail to create", Value: strconv.Itoa(functions.FailedToCreate)},
+			{Name: "number of functions fail to update", Value: strconv.Itoa(functions.FailedToUpdate)},
 		}
 	}
 	output = outOutputJSON{

@@ -1,5 +1,6 @@
 type Query {
 	getTodos: [Todo]
+	todo: Todo
 }
 
 type Todo {
