@@ -142,7 +142,7 @@ func (client *appSyncClient) CreateOrUpdateResolvers(apiID string, resolversFile
 				FunctionVersion:         aws.String("2018-05-29"),
 			})
 			if err != nil {
-				fmt.Printf("Function %s failed to update: %s", function.Name, err)
+				logger.Println(fmt.Sprintf("Function %s failed to update: %s", function.Name, err))
 				functionStatistics.FailedToUpdate++
 			} else {
 				functionStatistics.Updated++
@@ -159,7 +159,7 @@ func (client *appSyncClient) CreateOrUpdateResolvers(apiID string, resolversFile
 			})
 
 			if err != nil {
-				fmt.Printf("Function %s failed to create: %s", *function.Name, err)
+				logger.Println(fmt.Sprintf("Function %s failed to create: %s", *function.Name, err))
 				functionStatistics.FailedToCreate++
 			} else {
 				functions = append(functions, function)
@@ -224,7 +224,7 @@ func (client *appSyncClient) CreateOrUpdateResolvers(apiID string, resolversFile
 			}
 			_, err := client.updateResolver(params)
 			if err != nil {
-				fmt.Printf("Resolver on type %s and field %s failed to update: %s", resolver.TypeName, resolver.FieldName, err)
+				logger.Println(fmt.Sprintf("Resolver on type %s and field %s failed to update: %s", resolver.TypeName, resolver.FieldName, err))
 				resolverStatistics.FailedToUpdate++
 			} else {
 				resolverStatistics.Updated++
@@ -242,7 +242,7 @@ func (client *appSyncClient) CreateOrUpdateResolvers(apiID string, resolversFile
 			}
 			_, err := client.createResolver(params)
 			if err != nil {
-				fmt.Printf("Resolver on type %s and field %s failed to create: %s", resolver.TypeName, resolver.FieldName, err)
+				logger.Println(fmt.Sprintf("Resolver on type %s and field %s failed to create: %s", resolver.TypeName, resolver.FieldName, err))
 				resolverStatistics.FailedToCreate++
 			} else {
 				resolverStatistics.Created++
