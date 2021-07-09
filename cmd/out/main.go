@@ -32,15 +32,19 @@ func main() {
 		schemaFile := os.Getenv("INPUT_SCHEMA_FILE")
 		resolversFile := os.Getenv("INPUT_RESOLVERS_FILE")
 
-		input.Source = make(map[string]string)
-		input.Params = make(map[string]string)
-		input.Source["api_id"] = apiID
-		input.Source["access_key_id"] = accessKeyId
-		input.Source["secret_access_key"] = secretAccessKey
-		input.Source["session_token"] = sessionToken
-		input.Source["region_name"] = regionName
-		input.Params["schema_file"] = schemaFile
-		input.Params["resolvers_file"] = resolversFile
+		input.Source = map[string]string{
+			"api_id":            apiID,
+			"access_key_id":     accessKeyId,
+			"secret_access_key": secretAccessKey,
+			"session_token":     sessionToken,
+			"region_name":       regionName,
+		}
+
+		input.Params = map[string]string{
+			"schema_file":    schemaFile,
+			"resolvers_file": resolversFile,
+		}
+
 	} else if err := decoder.Decode(&input); err != nil {
 		logger.Fatalf("Failed to decode to stdin: %s", err)
 	}
