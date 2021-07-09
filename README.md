@@ -79,7 +79,7 @@ resource:
 | secret_access_key  | Yes           | {YOUR_SECRET_ACCESS_KEY} |                                |
 | session_token      | Yes           | {YOUR_SESSION_TOKEN}     |                                |
 | region_name        | No            | eu-west-1                | AWS region DEFAULT: eu-west-1  |
-| ci                 | Yes           | github                   | It should be set to github     |
+| ci                 | No            | github                   | DEFAULT: github                |
 | schema_file        | No            | workspace/schema.graphql |                                |
 | resolvers_file     | No            | workspace/resolvers.yml  |                                |
 
