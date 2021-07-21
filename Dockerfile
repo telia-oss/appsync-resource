@@ -19,3 +19,5 @@ COPY --from=builder /go/src/github.com/telia-oss/appsync-resource/bin/out /opt/r
 RUN chmod +x /opt/resource/*
 
 FROM resource
+
+ENTRYPOINT ["/opt/resource/out"]
