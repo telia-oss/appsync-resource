@@ -64,11 +64,16 @@ func Command(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 	if schemaFile == "" && resolversFile == "" {
 		return outOutputJSON{}, errors.New("resolversFile and schemaFile both are not set")
 	}
+
+	whichCi := os.Getenv("INPUT_CI")
+
 	if schemaFile != "" {
 		var schemaFilePath string
 		if env == "development" {
 			pwd, _ := os.Getwd()
 			schemaFilePath = fmt.Sprintf("%s/%s", pwd, schemaFile)
+		} else if whichCi == "github" {
+			schemaFilePath = schemaFile
 		} else {
 			schemaFilePath = fmt.Sprintf("%s/%s", os.Args[1], schemaFile)
 		}
@@ -101,6 +106,8 @@ func Command(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 		if env == "development" {
 			pwd, _ := os.Getwd()
 			resolversFilePath = fmt.Sprintf("%s/%s", pwd, resolversFile)
+		} else if whichCi == "github" {
+			resolversFilePath = resolversFile
 		} else {
 			resolversFilePath = fmt.Sprintf("%s/%s", os.Args[1], resolversFile)
 		}
