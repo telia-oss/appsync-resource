@@ -126,9 +126,7 @@ func (client *appSyncClient) CreateOrUpdateResolvers(apiID string, resolversFile
 	}
 
 	for _, function := range resolvers.Functions {
-		functionName := function.Name
-
-		existingFunction := getFunctionByName(functionName, functions)
+		existingFunction := getFunctionByName(function.Name, functions)
 
 		if existingFunction != nil {
 			_, err := client.updateFunction(&appsync.UpdateFunctionInput{
