@@ -148,7 +148,7 @@ func (client *appSyncClient) CreateOrUpdateResolvers(apiID string, resolversFile
 				functionStatistics.Updated++
 			}
 		} else {
-			function, err := client.createFunction(&appsync.CreateFunctionInput{
+			functionResponse, err := client.createFunction(&appsync.CreateFunctionInput{
 				ApiId:                   aws.String(apiID),
 				DataSourceName:          aws.String(function.DataSourceName),
 				RequestMappingTemplate:  aws.String(function.RequestMappingTemplate),
@@ -159,10 +159,10 @@ func (client *appSyncClient) CreateOrUpdateResolvers(apiID string, resolversFile
 			})
 
 			if err != nil {
-				logger.Println(fmt.Sprintf("Function %s failed to create: %s", *function.Name, err))
+				logger.Println(fmt.Sprintf("Function %s failed to create: %s", function.Name, err))
 				functionStatistics.FailedToCreate++
 			} else {
-				functions = append(functions, function)
+				functions = append(functions, functionResponse)
 				functionStatistics.Created++
 			}
 		}
