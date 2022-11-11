@@ -44,6 +44,8 @@ func Command(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 
 	resolversFile, ok := input.Params["resolvers_file"]
 
+	partialUpdate, ok := input.Params["partial_update"]
+
 	var ref = input.Version.Ref
 	var output outOutputJSON
 	var resolverOutput []metadata
@@ -82,14 +84,26 @@ func Command(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 			logger.Fatalf("can't read the schema file: %s", serr)
 		}
 
-		error := client.StartSchemaCreationOrUpdate(apiID, schema)
-		if error != nil {
-			logger.Fatalf("failed to create/update the schema: %s", error)
+		if partialUpdate == "true" && resolversFile != "" {
+			resolversFile, rerr := loadResolversFile(resolversFile, whichCi)
+			if rerr != nil {
+				logger.Fatalf("can't read the resolvers file: %s", rerr)
+			}
+
+			error := client.StartPartialSchemaCreationOrUpdate(apiID, schema, resolversFile)
+			if error != nil {
+				logger.Fatalf("failed to create/update the schema: %s", error)
+			}
+		} else {
+			error := client.StartSchemaCreationOrUpdate(apiID, schema)
+			if error != nil {
+				logger.Fatalf("failed to create/update the schema: %s", error)
+			}
 		}
 
 		creationStatus, creationDetails, err := client.GetSchemaCreationStatus(apiID)
 		if err != nil {
-			logger.Println("Failed to get Schema Creation status, However the Schema creation might be succeeded, check the AWS console and re-tigger the build if the schema not created/updated: %s", err)
+			logger.Printf("Failed to get Schema Creation status, However the Schema creation might be succeeded, check the AWS console and re-tigger the build if the schema not created/updated: %s", err)
 			schemaOutput = []metadata{
 				{Name: "creationStatus", Value: "unknown"},
 				{Name: "creationDetails", Value: "unknown"},
@@ -100,18 +114,10 @@ func Command(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 				{Name: "creationDetails", Value: creationDetails},
 			}
 		}
+
 	}
 	if resolversFile != "" {
-		var resolversFilePath string
-		if env == "development" {
-			pwd, _ := os.Getwd()
-			resolversFilePath = fmt.Sprintf("%s/%s", pwd, resolversFile)
-		} else if whichCi == "github" {
-			resolversFilePath = resolversFile
-		} else {
-			resolversFilePath = fmt.Sprintf("%s/%s", os.Args[1], resolversFile)
-		}
-		resolversFile, rerr := ioutil.ReadFile(resolversFilePath)
+		resolversFile, rerr := loadResolversFile(resolversFile, whichCi)
 		if rerr != nil {
 			logger.Fatalf("can't read the resolvers file: %s", rerr)
 		}
@@ -138,4 +144,18 @@ func Command(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 	}
 	return output, nil
 
+}
+
+func loadResolversFile(resolversFile string, whichCi string) ([]byte, error) {
+	var resolversFilePath string
+	if env == "development" {
+		pwd, _ := os.Getwd()
+		resolversFilePath = fmt.Sprintf("%s/%s", pwd, resolversFile)
+	} else if whichCi == "github" {
+		resolversFilePath = resolversFile
+	} else {
+		resolversFilePath = fmt.Sprintf("%s/%s", os.Args[1], resolversFile)
+	}
+
+	return ioutil.ReadFile(resolversFilePath)
 }

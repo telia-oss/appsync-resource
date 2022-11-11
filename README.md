@@ -26,7 +26,8 @@ Given a schema specified by `schema_file`, to update/create AppSync  schema Or/A
 * `schema_file`: *Optional.* .grapqh schema File provided by an output of a task, if you didn't specify `resolvers_file` this field is *Required.*.
 
 * `resolvers_file`: *Optional.* .yml resolver String provided by an output of a task, if you didn't specify `schema_file` this field is *Required.*.
-.
+
+* `partial_update`: *Optional.* Boolean to specify if to update the entire schema or only fields and types related to the fields and types resolved by the resolvers defined in `resolvers_file`. DEFAULT: `false`. If this is true `resolvers_file` is **Required**.
 
 ## Example Configuration
 
@@ -81,6 +82,7 @@ resource:
 | region_name        | No            | eu-west-1                | AWS region DEFAULT: eu-west-1  |
 | ci                 | No            | github                   | DEFAULT: github                |
 | schema_file        | No            | workspace/schema.graphql |                                |
+| partial_update     | No            | false                    |                                |
 | resolvers_file     | No            | workspace/resolvers.yml  |                                |
 
 ## Example Configuration
@@ -96,6 +98,7 @@ jobs:
       with:
         schema_file: "workspace/schema.graphql"
         resolvers_file: "workspace/resolvers.yml"
+        partial_update: "false"
         access_key_id: {YOUR_ACCESS_KEY_ID}  
         secret_access_key: {YOUR_SECRET_ACCESS_KEY} 
         session_token: {YOUR_SESSION_TOKEN}  
