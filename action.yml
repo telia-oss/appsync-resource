@@ -9,6 +9,8 @@ inputs:
     required: false
   resolvers_file:
     required: false
+  resolved_fields_only:
+    required: false
   access_key_id:
     required: true
   secret_access_key:
@@ -28,6 +30,7 @@ runs:
     - ${{ inputs.ci}}
     - ${{ inputs.resolvers_file}}
     - ${{ inputs.schema_file}}
+    - ${{ inputs.resolved_fields_only}}
     - ${{ inputs.access_key_id}}
     - ${{ inputs.secret_access_key}}
     - ${{ inputs.session_token}}

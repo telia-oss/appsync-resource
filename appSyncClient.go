@@ -52,6 +52,7 @@ type AppSync interface {
 	CreateOrUpdateResolvers(apiID string, resolversFile []byte, logger *log.Logger) (Statistics, Statistics, error)
 	StartSchemaCreationOrUpdate(apiID string, schema []byte) error
 	GetSchemaCreationStatus(apiID string) (string, string, error)
+	StartPartialSchemaCreationOrUpdate(apiID string, schema []byte, resolverFile []byte, logger *log.Logger) error
 }
 
 type appSyncClient struct {
@@ -140,7 +141,7 @@ func (client *appSyncClient) CreateOrUpdateResolvers(apiID string, resolversFile
 				FunctionVersion:         aws.String("2018-05-29"),
 			})
 			if err != nil {
-				logger.Println(fmt.Sprintf("Function %s failed to update: %s", function.Name, err))
+				logger.Printf("Function %s failed to update: %s\n", function.Name, err)
 				functionStatistics.FailedToUpdate++
 			} else {
 				functionStatistics.Updated++
@@ -157,7 +158,7 @@ func (client *appSyncClient) CreateOrUpdateResolvers(apiID string, resolversFile
 			})
 
 			if err != nil {
-				logger.Println(fmt.Sprintf("Function %s failed to create: %s", function.Name, err))
+				logger.Printf("Function %s failed to create: %s\n", function.Name, err)
 				functionStatistics.FailedToCreate++
 			} else {
 				functions = append(functions, functionResponse)
@@ -222,7 +223,7 @@ func (client *appSyncClient) CreateOrUpdateResolvers(apiID string, resolversFile
 			}
 			_, err := client.updateResolver(params)
 			if err != nil {
-				logger.Println(fmt.Sprintf("Resolver on type %s and field %s failed to update: %s", resolver.TypeName, resolver.FieldName, err))
+				logger.Printf("Resolver on type %s and field %s failed to update: %s\n", resolver.TypeName, resolver.FieldName, err)
 				resolverStatistics.FailedToUpdate++
 			} else {
 				resolverStatistics.Updated++
@@ -240,7 +241,7 @@ func (client *appSyncClient) CreateOrUpdateResolvers(apiID string, resolversFile
 			}
 			_, err := client.createResolver(params)
 			if err != nil {
-				logger.Println(fmt.Sprintf("Resolver on type %s and field %s failed to create: %s", resolver.TypeName, resolver.FieldName, err))
+				logger.Printf("Resolver on type %s and field %s failed to create: %s\n", resolver.TypeName, resolver.FieldName, err)
 				resolverStatistics.FailedToCreate++
 			} else {
 				resolverStatistics.Created++
@@ -395,4 +396,29 @@ func (client *appSyncClient) GetSchemaCreationStatus(apiID string) (string, stri
 
 	creationStatus, creationDetails, err := client.getSchemaCreationStatus(schemaStatusParams)
 	return creationStatus, creationDetails, err
+}
+
+func (client *appSyncClient) StartPartialSchemaCreationOrUpdate(apiID string, schema []byte, resolverFile []byte, logger *log.Logger) error {
+	out, err := client.appSyncClient.GetIntrospectionSchema(&appsync.GetIntrospectionSchemaInput{
+		ApiId:             aws.String(apiID),
+		Format:            aws.String("SDL"),
+		IncludeDirectives: aws.Bool(true),
+	})
+
+	if err != nil {
+		return err
+	}
+
+	var resolvers Resolvers
+	err = yaml.Unmarshal(resolverFile, &resolvers)
+	if err != nil {
+		return err
+	}
+
+	newSchema, err := combineSchemas(string(out.Schema), string(schema), resolvers.Resolvers, logger)
+	if err != nil {
+		return err
+	}
+
+	return client.StartSchemaCreationOrUpdate(apiID, []byte(newSchema))
 }
