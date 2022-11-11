@@ -31,7 +31,7 @@ func main() {
 		apiID := os.Getenv("INPUT_API_ID")
 		schemaFile := os.Getenv("INPUT_SCHEMA_FILE")
 		resolversFile := os.Getenv("INPUT_RESOLVERS_FILE")
-		partialUpdate := os.Getenv("PARTIAL_UPDATE")
+		resolvedFieldsOnly := os.Getenv("RESOLVED_FIELDS_ONLY")
 
 		input.Source = map[string]string{
 			"api_id":            apiID,
@@ -42,9 +42,9 @@ func main() {
 		}
 
 		input.Params = map[string]string{
-			"schema_file":    schemaFile,
-			"resolvers_file": resolversFile,
-			"partial_update": partialUpdate,
+			"schema_file":          schemaFile,
+			"resolvers_file":       resolversFile,
+			"resolved_fields_only": resolvedFieldsOnly,
 		}
 
 	} else if err := decoder.Decode(&input); err != nil {

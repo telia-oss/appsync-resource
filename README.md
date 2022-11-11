@@ -27,7 +27,7 @@ Given a schema specified by `schema_file`, to update/create AppSync  schema Or/A
 
 * `resolvers_file`: *Optional.* .yml resolver String provided by an output of a task, if you didn't specify `schema_file` this field is *Required.*.
 
-* `partial_update`: *Optional.* Boolean to specify if to update the entire schema or only fields and types related to the fields and types resolved by the resolvers defined in `resolvers_file`. DEFAULT: `false`. If this is true `resolvers_file` is **Required**.
+* `resolved_fields_only`: *Optional.* If true while updating the AppSync schema from `schema_file` only the fields and their types defined in the `resolvers_file` will be updated. This will work recursively for all nested types. Default: false. If `resolved_types_only` is true then `schema_file` and `resolvers_file` are *Required.*
 
 ## Example Configuration
 
@@ -73,17 +73,17 @@ resource:
 
 # Github action
 
-| Parameter          | Required      | Example                  | Description
-| ------------------ | ------------- | -------------            | ------------------------------ |
-| api_id             | Yes           | znvjdp3n25epx            |                                |
-| access_key_id      | Yes           | {YOUR_ACCESS_KEY_ID}     |                                |
-| secret_access_key  | Yes           | {YOUR_SECRET_ACCESS_KEY} |                                |
-| session_token      | Yes           | {YOUR_SESSION_TOKEN}     |                                |
-| region_name        | No            | eu-west-1                | AWS region DEFAULT: eu-west-1  |
-| ci                 | No            | github                   | DEFAULT: github                |
-| schema_file        | No            | workspace/schema.graphql |                                |
-| partial_update     | No            | false                    |                                |
-| resolvers_file     | No            | workspace/resolvers.yml  |                                |
+| Parameter            | Required      | Example                  | Description
+| -------------------- | ------------- | -------------            | ------------------------------ |
+| api_id               | Yes           | znvjdp3n25epx            |                                |
+| access_key_id        | Yes           | {YOUR_ACCESS_KEY_ID}     |                                |
+| secret_access_key    | Yes           | {YOUR_SECRET_ACCESS_KEY} |                                |
+| session_token        | Yes           | {YOUR_SESSION_TOKEN}     |                                |
+| region_name          | No            | eu-west-1                | AWS region DEFAULT: eu-west-1  |
+| ci                   | No            | github                   | DEFAULT: github                |
+| schema_file          | No            | workspace/schema.graphql |                                |
+| resolved_fields_only | No            | false                    |                                |
+| resolvers_file       | No            | workspace/resolvers.yml  |                                |
 
 ## Example Configuration
 
@@ -98,7 +98,7 @@ jobs:
       with:
         schema_file: "workspace/schema.graphql"
         resolvers_file: "workspace/resolvers.yml"
-        partial_update: "false"
+        resolved_fields_only: "false"
         access_key_id: {YOUR_ACCESS_KEY_ID}  
         secret_access_key: {YOUR_SECRET_ACCESS_KEY} 
         session_token: {YOUR_SESSION_TOKEN}  

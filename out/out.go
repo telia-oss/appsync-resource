@@ -44,7 +44,7 @@ func Command(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 
 	resolversFile, ok := input.Params["resolvers_file"]
 
-	partialUpdate, ok := input.Params["partial_update"]
+	resolvedFieldsOnly, ok := input.Params["resolved_fields_only"]
 
 	var ref = input.Version.Ref
 	var output outOutputJSON
@@ -84,7 +84,11 @@ func Command(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 			logger.Fatalf("can't read the schema file: %s", serr)
 		}
 
-		if partialUpdate == "true" && resolversFile != "" {
+		if resolvedFieldsOnly == "true" {
+			if resolversFile == "" {
+				return outOutputJSON{}, errors.New("resolversFile is not set")
+			}
+
 			resolversFile, rerr := loadResolversFile(resolversFile, whichCi)
 			if rerr != nil {
 				logger.Fatalf("can't read the resolvers file: %s", rerr)
