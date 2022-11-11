@@ -52,11 +52,6 @@ func combineSchemas(oldSDL string, newSDL string, resolvers []Resolver) (string,
 		replaceFieldInObjectDefinition(existingObjectType, newField)
 	}
 
-	// Add all resolved types and their subtypes to the schema
-	// for _, resolver := range resolvers {
-
-	// }
-
 	printed := printer.Print(oldSchema)
 
 	return printed.(string), nil
