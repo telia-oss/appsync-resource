@@ -90,7 +90,7 @@ func Command(input InputJSON, logger *log.Logger) (outOutputJSON, error) {
 				logger.Fatalf("can't read the resolvers file: %s", rerr)
 			}
 
-			error := client.StartPartialSchemaCreationOrUpdate(apiID, schema, resolversFile)
+			error := client.StartPartialSchemaCreationOrUpdate(apiID, schema, resolversFile, logger)
 			if error != nil {
 				logger.Fatalf("failed to create/update the schema: %s", error)
 			}

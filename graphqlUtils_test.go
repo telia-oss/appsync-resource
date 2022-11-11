@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"log"
 	"regexp"
 	"strings"
 	"testing"
@@ -24,7 +25,7 @@ func TestSingleFieldInsertIntoQueryType(t *testing.T) {
 			FieldName: "hello",
 			TypeName:  "Query",
 		},
-	})
+	}, log.Default())
 
 	assert.Nil(t, err)
 	assertEqualNoWhitespace(t, `type Query { hello: String }`, combined)
@@ -36,7 +37,7 @@ func TestSingleFieldNotInResolverSet(t *testing.T) {
 	}`, `
 	type Query {
 		hello: String
-	}`, []Resolver{})
+	}`, []Resolver{}, log.Default())
 
 	assert.Nil(t, err)
 	assertEqualNoWhitespace(t, `type Query {}`, combined)
@@ -56,7 +57,7 @@ func TestSingleFieldInUnknownType(t *testing.T) {
 			FieldName: "hello",
 			TypeName:  "Foo",
 		},
-	})
+	}, log.Default())
 
 	assert.Nil(t, err)
 	assertEqualNoWhitespace(t, `type Query {}`, combined)
@@ -76,7 +77,7 @@ func TestSingleFieldWithType(t *testing.T) {
 			FieldName: "foo",
 			TypeName:  "Query",
 		},
-	})
+	}, log.Default())
 
 	assert.Nil(t, err)
 	assertEqualNoWhitespace(t, `type Query { foo: Foo } type Foo { hello: String }`, combined)
@@ -99,7 +100,7 @@ func TestSingleFieldWithTypeAndNestedType(t *testing.T) {
 			FieldName: "foo",
 			TypeName:  "Query",
 		},
-	})
+	}, log.Default())
 
 	assert.Nil(t, err)
 	assertEqualNoWhitespace(t, `type Query { foo: Foo } type Foo { hello: Bar } type Bar { hello: String }`, combined)
@@ -131,7 +132,7 @@ func TestFieldWithInterfaceReturn(t *testing.T) {
 			FieldName: "foo",
 			TypeName:  "Query",
 		},
-	})
+	}, log.Default())
 
 	assert.Nil(t, err)
 	assertEqualNoWhitespace(t, `
@@ -167,7 +168,7 @@ func TestFieldWithArguments(t *testing.T) {
 			FieldName: "foo",
 			TypeName:  "Query",
 		},
-	})
+	}, log.Default())
 
 	assert.Nil(t, err)
 	assertEqualNoWhitespace(t, `type Query { foo(bar: String): String }`, combined)
@@ -190,7 +191,7 @@ func TestFieldWithInputType(t *testing.T) {
 			FieldName: "foo",
 			TypeName:  "Query",
 		},
-	})
+	}, log.Default())
 
 	assert.Nil(t, err)
 	assertEqualNoWhitespace(t, `type Query { foo(inp: FooInput): String } input FooInput { bar: BarInput } input BarInput { bar: String }`, combined)
@@ -214,7 +215,7 @@ func TestFieldWithEnum(t *testing.T) {
 			FieldName: "foo",
 			TypeName:  "Query",
 		},
-	})
+	}, log.Default())
 
 	assert.Nil(t, err)
 	assertEqualNoWhitespace(t, `type Query { foo: Foo } type Foo { bar: BarEnum } enum BarEnum { FOO BAR }`, combined)
@@ -238,7 +239,7 @@ func TestFieldWithEnumInInput(t *testing.T) {
 			FieldName: "foo",
 			TypeName:  "Query",
 		},
-	})
+	}, log.Default())
 
 	assert.Nil(t, err)
 	assertEqualNoWhitespace(t, `type Query { foo(inp: FooInput): String } input FooInput { bar: BarEnum } enum BarEnum { FOO BAR }`, combined)
@@ -262,7 +263,7 @@ func TestFieldWithUnion(t *testing.T) {
 			FieldName: "foo",
 			TypeName:  "Query",
 		},
-	})
+	}, log.Default())
 
 	assert.Nil(t, err)
 	assertEqualNoWhitespace(t, `type Query { foo: BarUnion } union BarUnion = Foo | Baz type Foo { bar: String } type Baz { baz: String }`, combined)
@@ -286,7 +287,7 @@ func TestExistingType(t *testing.T) {
 			FieldName: "foo",
 			TypeName:  "Query",
 		},
-	})
+	}, log.Default())
 
 	assert.Nil(t, err)
 	assertEqualNoWhitespace(t, `type Foo { hello: String } type Query { foo: Foo }`, combined)
@@ -312,7 +313,7 @@ func TestMultipleModificationsOnExistingType(t *testing.T) {
 			FieldName: "foo",
 			TypeName:  "Query",
 		},
-	})
+	}, log.Default())
 
 	assert.Nil(t, err)
 	assertEqualNoWhitespace(t, `type Foo { hello: String } type Query { foo: Foo bar: String }`, combined)
@@ -346,8 +347,50 @@ func TestMultipleUpdatedResolvers(t *testing.T) {
 			FieldName: "bar",
 			TypeName:  "Query",
 		},
-	})
+	}, log.Default())
 
 	assert.Nil(t, err)
 	assertEqualNoWhitespace(t, `type Foo { hello: String } type Query { foo: Foo bar: Bar } type Bar { hello: String }`, combined)
+}
+
+func TestChangeFromScalarToDifferentScalar(t *testing.T) {
+	combined, err := combineSchemas(`
+	scalar Foo
+	type Query {
+		foo: Foo
+	}`, `
+	scalar Bar
+	type Query {
+		foo: Bar
+	}`, []Resolver{
+		{
+			FieldName: "foo",
+			TypeName:  "Query",
+		},
+	}, log.Default())
+
+	assert.Nil(t, err)
+	assertEqualNoWhitespace(t, `scalar Foo type Query { foo: Bar } scalar Bar`, combined)
+}
+
+func TestChangeFromScalarToObject(t *testing.T) {
+	combined, err := combineSchemas(`
+	scalar Foo
+	type Query {
+		foo: Foo
+	}`, `
+	type Foo {
+		hello: String
+	}
+	type Query {
+		foo: Foo
+	}`, []Resolver{
+		{
+			FieldName: "foo",
+			TypeName:  "Query",
+		},
+	}, log.Default())
+
+	assert.Nil(t, err)
+	assertEqualNoWhitespace(t, `type Foo { hello: String } type Query { foo: Foo }`, combined)
 }

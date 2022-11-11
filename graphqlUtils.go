@@ -1,12 +1,14 @@
 package resource
 
 import (
+	"log"
+
 	"github.com/graphql-go/graphql/language/ast"
 	"github.com/graphql-go/graphql/language/parser"
 	"github.com/graphql-go/graphql/language/printer"
 )
 
-func combineSchemas(oldSDL string, newSDL string, resolvers []Resolver) (string, error) {
+func combineSchemas(oldSDL string, newSDL string, resolvers []Resolver, logger *log.Logger) (string, error) {
 	oldSchema, err := parser.Parse(parser.ParseParams{
 		Source: string(oldSDL),
 		Options: parser.ParseOptions{
@@ -34,22 +36,47 @@ func combineSchemas(oldSDL string, newSDL string, resolvers []Resolver) (string,
 	// Ensure that resolved fields are in the schema
 	for _, resolver := range resolvers {
 		existingType := getTypeFromSchema(oldSchema, resolver.TypeName)
+		newType := getTypeFromSchema(newSchema, resolver.TypeName)
 
 		if existingType == nil {
+			logger.Printf("Type %s not found in the existing schema. Skipping schema update for the %s:%s resolver.",
+				resolver.TypeName,
+				resolver.TypeName,
+				resolver.FieldName)
 			continue
 		}
 
-		existingObjectType := existingType.(*ast.ObjectDefinition)
+		var existingObject *ast.ObjectDefinition
+		var newObject *ast.ObjectDefinition
 
-		newType := getTypeFromSchema(newSchema, resolver.TypeName).(*ast.ObjectDefinition)
-		newField := getFieldFromObjectDefinition(newType, resolver.FieldName)
+		if existingType, ok := existingType.(*ast.ObjectDefinition); ok {
+			existingObject = existingType
+		} else {
+			logger.Printf("Type %s is not an object. Skipping schema update for the %s:%s resolver.",
+				resolver.TypeName,
+				resolver.TypeName,
+				resolver.FieldName)
+			continue
+		}
+
+		if newType, ok := newType.(*ast.ObjectDefinition); ok {
+			newObject = newType
+		} else {
+			logger.Printf("Type %s is not an object. Skipping schema update for the %s:%s resolver.",
+				resolver.TypeName,
+				resolver.TypeName,
+				resolver.FieldName)
+			continue
+		}
+
+		newField := getFieldFromObjectDefinition(newObject, resolver.FieldName)
 
 		insertTypeAndSubtypesIntoSchema(oldSchema, newSchema, newField.Type)
 		for _, arg := range newField.Arguments {
 			insertTypeAndSubtypesIntoSchema(oldSchema, newSchema, arg.Type)
 		}
 
-		replaceFieldInObjectDefinition(existingObjectType, newField)
+		replaceFieldInObjectDefinition(existingObject, newField)
 	}
 
 	printed := printer.Print(oldSchema)

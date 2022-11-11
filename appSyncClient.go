@@ -52,7 +52,7 @@ type AppSync interface {
 	CreateOrUpdateResolvers(apiID string, resolversFile []byte, logger *log.Logger) (Statistics, Statistics, error)
 	StartSchemaCreationOrUpdate(apiID string, schema []byte) error
 	GetSchemaCreationStatus(apiID string) (string, string, error)
-	StartPartialSchemaCreationOrUpdate(apiID string, schema []byte, resolverFile []byte) error
+	StartPartialSchemaCreationOrUpdate(apiID string, schema []byte, resolverFile []byte, logger *log.Logger) error
 }
 
 type appSyncClient struct {
@@ -398,7 +398,7 @@ func (client *appSyncClient) GetSchemaCreationStatus(apiID string) (string, stri
 	return creationStatus, creationDetails, err
 }
 
-func (client *appSyncClient) StartPartialSchemaCreationOrUpdate(apiID string, schema []byte, resolverFile []byte) error {
+func (client *appSyncClient) StartPartialSchemaCreationOrUpdate(apiID string, schema []byte, resolverFile []byte, logger *log.Logger) error {
 	out, err := client.appSyncClient.GetIntrospectionSchema(&appsync.GetIntrospectionSchemaInput{
 		ApiId:             aws.String(apiID),
 		Format:            aws.String("SDL"),
@@ -415,7 +415,7 @@ func (client *appSyncClient) StartPartialSchemaCreationOrUpdate(apiID string, sc
 		return err
 	}
 
-	newSchema, err := combineSchemas(string(out.Schema), string(schema), resolvers.Resolvers)
+	newSchema, err := combineSchemas(string(out.Schema), string(schema), resolvers.Resolvers, logger)
 	if err != nil {
 		return err
 	}
